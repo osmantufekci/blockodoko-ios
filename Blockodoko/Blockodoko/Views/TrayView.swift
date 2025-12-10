@@ -7,7 +7,7 @@ struct TrayView: View {
     @Binding var dragOffset: CGSize
     
     var body: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
+        ScrollView(.horizontal, showsIndicators: true) {
             HStack(spacing: 20) {
                 ForEach(viewModel.tray) { piece in
                     GeometryReader { geo in
