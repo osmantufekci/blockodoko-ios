@@ -10,7 +10,6 @@ struct MainGameView: View {
     @State private var dragLocation: CGPoint = .zero
     @State private var dragOffset: CGSize = .zero
     @State private var boardFrame: CGRect = .zero
-    @State private var showJokerModal: Bool = false
 
     init(difficulty: Difficulty = .medHard, seed: String? = nil) {
         self.difficulty = difficulty
@@ -22,13 +21,10 @@ struct MainGameView: View {
             Color.themeBackground.edgesIgnoringSafeArea(.all)
             
             VStack(spacing: 12) {
-                // Header
                 HeaderView(viewModel: viewModel)
                 
                 Spacer()
-                
-                // Game Board
-                // We use GeometryReader to get the frame for drop detection
+
                 GameBoardView(viewModel: viewModel, boardFrame: $boardFrame)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .aspectRatio(1, contentMode: .fit)
@@ -36,35 +32,27 @@ struct MainGameView: View {
                     .zIndex(1)
                  
                 Spacer()
-                
-                // Controls (Undo, Hint)
+
+                // Controls (Jokers)
                 HStack(spacing: 20) {
-                    Button(action: { viewModel.useHint() }) {
-                        VStack {
-                            Text("💡")
-                            Text("Hint (100)")
-                                .font(.caption2)
-                                .foregroundColor(.yellow)
+                    ForEach(viewModel.jokerManager.availableJokers, id: \.id) { joker in
+                         Button(action: { 
+                             viewModel.useJoker(id: joker.id) 
+                         }) {
+                            VStack {
+                                Image(systemName: joker.icon)
+                                    .font(.system(size: 20))
+                                Text(joker.name)
+                                    .font(.caption2)
+                            }
+                            .foregroundColor(joker.color)
+                            .padding(8)
+                            .background(Color.themeTray)
+                            .cornerRadius(8)
                         }
-                        .padding(8)
-                        .background(Color.themeTray)
-                        .cornerRadius(8)
-                    }
-                    
-                    Button(action: { showJokerModal = true }) {
-                        VStack {
-                            Text("★")
-                            Text("Joker (200)")
-                                .font(.caption2)
-                                .foregroundColor(.purple)
-                        }
-                        .padding(8)
-                        .background(Color.themeTray)
-                        .cornerRadius(8)
                     }
                 }
-                
-                // Tray
+
                 TrayView(
                     viewModel: viewModel,
                     draggedPiece: $draggedPiece,
@@ -84,29 +72,60 @@ struct MainGameView: View {
                 .padding(.bottom)
 
                 LevelProgressView(
-                    placed: viewModel.totalBlocks - viewModel.tray.count,
-                    total: viewModel.totalBlocks
+                    placed: viewModel.totalPiecesTarget - viewModel.tray.count,
+                    total: viewModel.totalPiecesTarget
                 )
                 .padding(.bottom, 10)
             }
-            .blur(radius: draggedPiece != nil ? 0.1 : 0)
+            .blur(radius: (draggedPiece != nil || viewModel.showLevelStartModal) ? 0.1 : 0)
 
-            // Dragged Piece Overlay
             if let piece = draggedPiece {
-                PieceView(piece: piece, cellSize: 40) // Larger size for dragging
+                PieceView(piece: piece, cellSize: 40)
                     .position(dragLocation)
-                    .offset(y: -100) // Finger offset
+                    .offset(y: -100)
                     .zIndex(100)
                     .allowsHitTesting(false)
             }
-            
+
             // Modals
-            if showJokerModal {
-                JokerModalView(viewModel: viewModel, isPresented: $showJokerModal)
+            if viewModel.showJokerModal {
+                JokerModalView(viewModel: viewModel, isPresented: $viewModel.showJokerModal)
                     .zIndex(200)
             }
+
+            if viewModel.showLevelStartModal {
+                LevelStartView(
+                    levelNumber: viewModel.currentLevel,
+                    gridSize: viewModel.board.count,
+                    targetPieces: viewModel.tray.count,
+                    difficultyName: viewModel.difficulty.rawValue,
+                    onStart: {
+                        withAnimation {
+                            viewModel.showLevelStartModal = false
+                        }
+                    }
+                )
+                .zIndex(100)
+            }
+
+            if viewModel.showGameOverModal {
+                GameOverView(
+                    onRestart: {
+                        viewModel.loadLevel(self.viewModel.currentLevel)
+                        viewModel.gameStatus = "Ready"
+                        viewModel.showGameOverModal = false
+                    },
+                    onUndo: {
+                        viewModel.gameStatus = "Playing"
+                        viewModel.showGameOverModal = false
+
+                        withAnimation(Animation.easeIn.delay(0.25)) {
+                            viewModel.undoMove()
+                        }
+                    }
+                )
+            }
         }
-        // status overlay
         .overlay(
             VStack {
                 if viewModel.gameStatus == "Victory!" {
@@ -116,16 +135,12 @@ struct MainGameView: View {
                         .padding()
                         .background(Color.yellow)
                         .cornerRadius(10)
-                        .onTapGesture {
-                            viewModel.startLevel(difficulty: viewModel.difficulty)
-                            viewModel.gameStatus = "Ready"
-                        }
                 }
             }
         )
         .onAppear {
             if viewModel.board.isEmpty {
-                viewModel.startLevel(difficulty: difficulty, specificSeed: seed)
+                viewModel.loadLevel(viewModel.currentLevel)
             }
         }
     }
