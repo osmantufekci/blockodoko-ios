@@ -23,7 +23,6 @@ struct PieceView: View {
             }
         }
         .padding(5)
-        .background(Color.white.opacity(0.05))
-        .cornerRadius(8)
+        
     }
 }
