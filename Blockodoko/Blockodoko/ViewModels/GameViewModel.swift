@@ -109,7 +109,7 @@ class GameViewModel: ObservableObject, GameContext {
         gameStatus = "Game Over"
         withAnimation(Animation.easeIn.delay(0.25)) {
             showGameOverModal = true
-            hapticFeedback(style: .rigid)
+            HapticManager.shared.gameOver()
         }
         // Burada bir "Yandın" modalı açabilirsin
         // showGameOverModal = true
@@ -278,6 +278,8 @@ class GameViewModel: ObservableObject, GameContext {
         // 4. İlerlemeyi Güncelle
         piecesPlacedCount += 1
 
+        HapticManager.shared.placePiece()
+
         // 5. YENİ KAZANMA KONTROLÜ: Tahta tamamen doldu mu?
         if checkWinCondition() {
             completeLevel()
@@ -405,7 +407,8 @@ class GameViewModel: ObservableObject, GameContext {
     func useJoker(id: JokerType) {
 //        if coins <= 100 { self.coins = 950 }
         guard let joker = jokerManager.getJoker(id: id) else { return }
-        
+
+        HapticManager.shared.useJoker()
         // Execute
         // We pass 'self' as context. 
         // Since execute returns Bool, we can handle feedback here if needed.
@@ -564,8 +567,3 @@ class GameViewModel: ObservableObject, GameContext {
     }
 }
 
-// Titreşim Yardımcısı
-func hapticFeedback(style: UIImpactFeedbackGenerator.FeedbackStyle) {
-    let generator = UIImpactFeedbackGenerator(style: style)
-    generator.impactOccurred()
-}
