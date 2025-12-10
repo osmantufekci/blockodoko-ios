@@ -21,7 +21,6 @@ class GameViewModel: ObservableObject {
     init() {
         self.coins = UserDefaults.standard.integer(forKey: "gm_coins")
         if self.coins == 0 { self.coins = 1000 } // Default if not set or 0
-        startLevel(difficulty: .medHard)
     }
 
     // MARK: - Level Generation
