@@ -29,14 +29,14 @@ struct HeaderView: View {
             .padding(.bottom, 10)
             
             // Seed & Difficulty Info
-            HStack {
-                Text("Seed: #\(viewModel.displayLevelSeed)")
-                    .font(.caption)
-                    .padding(4)
-                    .background(Color.white.opacity(0.1))
-                    .cornerRadius(4)
-                
-                Spacer()
+//            HStack {
+//                Text("Seed: #\(viewModel.displayLevelSeed)")
+//                    .font(.caption)
+//                    .padding(4)
+//                    .background(Color.white.opacity(0.1))
+//                    .cornerRadius(4)
+//                
+//                Spacer()
                 
 //                ScrollView(.horizontal, showsIndicators: false) {
 //                    HStack {
@@ -53,7 +53,7 @@ struct HeaderView: View {
 //                        }
 //                    }
 //                }
-            }
+//            }
         }
         .padding()
         .background(Color.black.opacity(0.2))
