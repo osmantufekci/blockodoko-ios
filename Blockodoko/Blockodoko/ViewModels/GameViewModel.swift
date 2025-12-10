@@ -6,6 +6,7 @@ class GameViewModel: ObservableObject {
     @Published var tray: [BlockPiece] = []
     @Published var displayLevelSeed: String = ""
     @Published var difficulty: Difficulty = .medHard
+    @Published var totalBlocks: Int = 0
     @Published var coins: Int = 1000
     @Published var gameStatus: String = "Ready"
     @Published var previewCells: Set<String> = [] // Coordinates "x,y"
@@ -38,8 +39,15 @@ class GameViewModel: ObservableObject {
             }
             finalSeed = seed
         } else {
-            // 2. No seed provided, generate one with the CURRENT difficulty
-            finalSeed = generateRandomSeed(difficulty: difficulty)
+            // 2. No seed provided, use LevelManager
+            let levelSeed = LevelManager.shared.getCurrentSeed()
+            
+            // Allow LevelManager's seed to override difficulty too
+            let firstChar = levelSeed.prefix(1)
+            if let index = Int(firstChar), index >= 0 && index < Difficulty.allCases.count {
+                 finalDifficulty = Difficulty.allCases[index]
+            }
+            finalSeed = levelSeed
         }
         
         guard let seed = finalSeed else { return }
@@ -54,17 +62,12 @@ class GameViewModel: ObservableObject {
     }
 
     private func generateRandomSeed(difficulty: Difficulty? = nil) -> String {
-        // If difficulty is passed, prepend its index
+        // Fallback or for Joker/internal usage if needed, but startLevel uses LevelManager now.
         let diff = difficulty ?? self.difficulty
-        
-        // Find index of difficulty
         let index = Difficulty.allCases.firstIndex(of: diff) ?? 0
-        
         let timestamp = String(Int(Date().timeIntervalSince1970), radix: 36)
         let randomPart = String(Int.random(in: 10000...99999), radix: 36)
-        let coreSeed = (timestamp + randomPart).uppercased()
-        
-        return "\(index)\(coreSeed)"
+        return "\(index):\(timestamp)\(randomPart)".uppercased()
     }
 
     private func generateLevel(difficulty: Difficulty) {
@@ -145,6 +148,7 @@ class GameViewModel: ObservableObject {
         }
 
         self.tray = piecesForTray
+        self.totalBlocks = piecesForTray.count
     }
 
     // MARK: - Shape Growing Algorithms
@@ -300,6 +304,9 @@ class GameViewModel: ObservableObject {
             gameStatus = "Victory!"
             let reward = difficulty.levelClearReward
             addCoins(amount: reward)
+            
+            // Advance level persistence
+            LevelManager.shared.advanceLevel()
         }
     }
 

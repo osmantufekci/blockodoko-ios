@@ -82,6 +82,12 @@ struct MainGameView: View {
                         }
                 )
                 .padding(.bottom)
+
+                LevelProgressView(
+                    placed: viewModel.totalBlocks - viewModel.tray.count,
+                    total: viewModel.totalBlocks
+                )
+                .padding(.bottom, 10)
             }
             .blur(radius: draggedPiece != nil ? 0.1 : 0)
 
