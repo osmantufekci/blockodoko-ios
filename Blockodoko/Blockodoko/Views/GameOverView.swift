@@ -55,7 +55,7 @@ struct GameOverView: View {
                     
                     // 1. Seçenek: İkinci Şans (Undo) - Önerilen
                     Button(action: {
-                        hapticFeedback(style: .medium)
+                        HapticManager.shared.buttonTap()
                         onUndo()
                     }) {
                         HStack {
@@ -80,7 +80,7 @@ struct GameOverView: View {
                     
                     // 2. Seçenek: Yeniden Başla (Restart)
                     Button(action: {
-                        hapticFeedback(style: .heavy)
+                        HapticManager.shared.buttonTap()
                         onRestart()
                     }) {
                         HStack {
