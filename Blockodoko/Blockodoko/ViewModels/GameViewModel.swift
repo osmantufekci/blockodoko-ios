@@ -1,90 +1,184 @@
+//
+//  GameViewModel.swift
+//  Blockodoko
+//
+//  Created by Osman Tüfekçi on 10.12.2025.
+//
 import SwiftUI
 import Combine
 
-class GameViewModel: ObservableObject {
+// MARK: - Game View Model
+class GameViewModel: ObservableObject, GameContext {
+    // --- PUBLISHED STATE ---
     @Published var board: [[Cell]] = []
-    @Published var tray: [BlockPiece] = []
-    @Published var displayLevelSeed: String = ""
+    @Published var tray: [BlockPiece] = [] // Artık TÜM parçalar burada duracak
+    @Published var currentLevel: Int = 1
     @Published var difficulty: Difficulty = .medHard
-    @Published var totalBlocks: Int = 0
-    @Published var coins: Int = 1000
-    @Published var gameStatus: String = "Ready"
-    @Published var previewCells: Set<String> = [] // Coordinates "x,y"
 
+    // Progress
+    @Published var totalPiecesTarget: Int = 0
+    @Published var piecesPlacedCount: Int = 0
+
+    // UI State
+    @Published var showLevelStartModal: Bool = true
+    @Published var showGameOverModal: Bool = false
+    @Published var gameStatus: String = "Ready"
+    @Published var coins: Int = 1000
+    @Published var previewCells: Set<String> = []
+    @Published var showJokerModal = false
 
     // Internal State
     private var rng: SeededRNG?
-    private var currentGridSize: Int = 8
-
-    // Constants
+    var currentGridSize: Int = 8
+    private var moveHistory: [GameStateSnapshot] = []
     private let colors = ["c-0", "c-1", "c-2", "c-3", "c-4", "c-5"]
 
     init() {
+        UserDefaults.standard.removeObject(forKey: "userCurrentLevel")
+        self.currentLevel = UserDefaults.standard.integer(forKey: "userCurrentLevel")
+        if self.currentLevel == 0 { self.currentLevel = 1 }
+
         self.coins = UserDefaults.standard.integer(forKey: "gm_coins")
-        if self.coins == 0 { self.coins = 1000 } // Default if not set or 0
+        if self.coins <= 100 { self.coins = 1000 }
+        print("userdefaults level:", UserDefaults.standard.integer(forKey: "userCurrentLevel"))
     }
 
-    // MARK: - Level Generation
+    // MARK: - Level Loading Logic
 
-    func startLevel(difficulty: Difficulty, specificSeed: String? = nil) {
-        var finalDifficulty = difficulty
-        var finalSeed = specificSeed
-        
-        // 1. If specificSeed is provided, try to parse difficulty from it
-        if let seed = specificSeed, !seed.isEmpty {
-            // Expected format: "D..." where D is digit 0-6 representing difficulty index
-            let firstChar = seed.prefix(1)
-            if let index = Int(firstChar), index >= 0 && index < Difficulty.allCases.count {
-                 finalDifficulty = Difficulty.allCases[index]
-            }
-            finalSeed = seed
-        } else {
-            // 2. No seed provided, use LevelManager
-            let levelSeed = LevelManager.shared.getCurrentSeed()
-            
-            // Allow LevelManager's seed to override difficulty too
-            let firstChar = levelSeed.prefix(1)
-            if let index = Int(firstChar), index >= 0 && index < Difficulty.allCases.count {
-                 finalDifficulty = Difficulty.allCases[index]
-            }
-            finalSeed = levelSeed
+    func loadLevel(_ levelNumber: Int) {
+        guard let data = LevelLibrary.getLevel(number: levelNumber) else {
+            print("Level not found, restarting logic or showing end game.")
+            return
         }
-        
-        guard let seed = finalSeed else { return }
 
-        self.difficulty = finalDifficulty
-        self.currentGridSize = finalDifficulty.gridSize
-        self.displayLevelSeed = seed
-        self.rng = SeededRNG(seedString: seed)
+        self.currentLevel = levelNumber
+        self.difficulty = data.difficulty
+        self.currentGridSize = data.difficulty.gridSize
+        self.piecesPlacedCount = 0
+        self.gameStatus = "Playing"
 
-        generateLevel(difficulty: finalDifficulty)
-        print("seed:", seed)
+        self.rng = SeededRNG(seedString: data.seed)
+
+        generateLevelInternal(difficulty: data.difficulty)
     }
 
-    private func generateRandomSeed(difficulty: Difficulty? = nil) -> String {
-        // Fallback or for Joker/internal usage if needed, but startLevel uses LevelManager now.
-        let diff = difficulty ?? self.difficulty
-        let index = Difficulty.allCases.firstIndex(of: diff) ?? 0
-        let timestamp = String(Int(Date().timeIntervalSince1970), radix: 36)
-        let randomPart = String(Int.random(in: 10000...99999), radix: 36)
-        return "\(index):\(timestamp)\(randomPart)".uppercased()
+    // Olası bir hamle kaldı mı diye kontrol eder
+    func checkGameOver() {
+        // Eğer tahta dolduysa zaten place fonksiyonunda yakalanır ama yine de bakalım
+        if checkWinCondition() { return }
+
+        // Tepsi boşsa ve tahta dolmadıysa -> YANLIŞ YERLEŞTİRME (Stuck)
+        // Bu durumda Undo yapılması veya Restart edilmesi gerekir.
+        if tray.isEmpty {
+            // Tahta dolmadı ama parça bitti. Demek ki Joker kullanmıştık veya yanlış yaptık.
+            // Ama paran varsa hala Joker ile 1x1 üretebilirsin.
+            if coins >= jokerManager.getJoker(id: .piece)?.cost ?? 0 {
+                gameStatus = "Use Joker!"
+                return
+            }
+
+            print("Game Over: Board not full and no pieces left!")
+            triggerGameOver()
+            return
+        }
+
+        // --- NORMAL SIKIŞMA KONTROLÜ ---
+        // Mevcut parçalardan EN AZ BİRİ bir yere sığıyor mu?
+        for piece in tray {
+            for y in 0..<currentGridSize {
+                for x in 0..<currentGridSize {
+                    if canPlace(piece: piece, at: x, y: y) {
+                        return // Hamle var, devam.
+                    }
+                }
+            }
+        }
+
+        // Parça sığmıyor... Peki Joker parası var mı?
+        if coins >= 200 {
+            gameStatus = "Use Joker!"
+            return
+        }
+
+        print("Game Over: No moves left!")
+        triggerGameOver()
     }
 
-    private func generateLevel(difficulty: Difficulty) {
+    func triggerGameOver() {
+        print("Game Over: No moves left!")
+        gameStatus = "Game Over"
+        withAnimation(Animation.easeIn.delay(0.25)) {
+            showGameOverModal = true
+            hapticFeedback(style: .rigid)
+        }
+        // Burada bir "Yandın" modalı açabilirsin
+        // showGameOverModal = true
+    }
+
+    func undoMove() {
+        // 1. Geçmiş boşsa işlem yapma
+        guard let lastState = moveHistory.popLast() else { return }
+
+        // 2. Maliyeti düş (Eğer Game Over ekranından çağrılıyorsa zaten orada kontrol edilebilir
+        // ama butondan çağrılıyorsa buradan düşmek gerekir.)
+        // Not: Eğer Game Over ekranında "Bedava" veya "Reklamla" vereceksen buradaki if'i kaldırabilirsin.
+        let cost = 50
+        if spendCoins(amount: cost) {
+            applySnapshot(lastState)
+        } else {
+            // Para yetmediyse geçmişi geri yerine koy (Pop etmiştik)
+            moveHistory.append(lastState)
+
+            // Titreşim (Hata)
+            let generator = UINotificationFeedbackGenerator()
+            generator.notificationOccurred(.error)
+        }
+    }
+
+    func checkWinCondition() -> Bool {
+        for row in board {
+            for cell in row {
+                if !cell.isFilled {
+                    return false
+                }
+            }
+        }
+        return true
+    }
+
+    private func applySnapshot(_ state: GameStateSnapshot) {
+        self.board = state.board
+        self.tray = state.tray
+        self.piecesPlacedCount = state.piecesPlacedCount
+        self.gameStatus = "Playing" // Game Over ise oyunu tekrar aktif et
+
+        // Başarılı titreşim
+        let generator = UIImpactFeedbackGenerator(style: .medium)
+        generator.impactOccurred()
+    }
+
+    private func saveState() {
+        let snapshot = GameStateSnapshot(
+            board: self.board,
+            tray: self.tray,
+            piecesPlacedCount: self.piecesPlacedCount
+        )
+        moveHistory.append(snapshot)
+    }
+
+    private func generateLevelInternal(difficulty: Difficulty) {
         guard let rng = self.rng else { return }
 
-        // 1. Init Empty Board
+        // 1. Board Sıfırla
         var newBoard = (0..<currentGridSize).map { y in
             (0..<currentGridSize).map { x in Cell(x: x, y: y) }
         }
 
-        // 2. Prefill Obstacles
-        // JS: Math.floor(remaining * (currentRNG.next() * (lvl.prefillMax - lvl.prefillMin) + lvl.prefillMin));
+        // 2. Engel (Prefill) Yerleştirme
         let totalCells = Double(currentGridSize * currentGridSize)
         let rates = difficulty.prefillRange
         let prefillFactor = rng.next() * (rates.upperBound - rates.lowerBound) + rates.lowerBound
         var prefillTarget = Int(totalCells * prefillFactor)
-
         var remainingEmpty = Int(totalCells)
 
         while prefillTarget > 0 && remainingEmpty > 0 {
@@ -94,25 +188,19 @@ class GameViewModel: ObservableObject {
             if !newBoard[hy][hx].isFilled {
                 newBoard[hy][hx].isFilled = true
                 newBoard[hy][hx].isLocked = true
-                newBoard[hy][hx].color = "prefill_gray" // Special color for obstacles
+                newBoard[hy][hx].color = "prefill_gray"
                 remainingEmpty -= 1
                 prefillTarget -= 1
             }
         }
-
         self.board = newBoard
 
-        // 3. Generate Tray Pieces (Virtual Grid Simulation)
-        var virtualGrid = newBoard.map { row in row.map { $0.isFilled ? 0 : 1 } } // 1 is available space in JS logic
-        // NOTE: In JS logic:
-        // boardState[hy][hx] = 1 (filled) -> virtualGrid[hy][hx] = 0 (unavailable)
-
-        var piecesForTray: [BlockPiece] = []
+        // 3. Parça Üretimi (Virtual Grid Solution)
+        var virtualGrid = newBoard.map { row in row.map { $0.isFilled ? 0 : 1 } }
+        var generatedPieces: [BlockPiece] = []
         var failSafe = 0
 
-        // JS: while(remaining > 0 && failSafe < 3000)
-        // We reuse `remainingEmpty` which tracks empty spots on board (virtualGrid has 1s)
-
+        // Kalan boşlukları dolduracak kadar parça üret
         while remainingEmpty > 0 && failSafe < 3000 {
             failSafe += 1
             let sx = Int(rng.next() * Double(currentGridSize))
@@ -120,13 +208,11 @@ class GameViewModel: ObservableObject {
 
             if virtualGrid[sy][sx] == 0 { continue }
 
-            // shapeType logic
             let shapeType = (currentGridSize >= 9 && rng.next() > 0.4) ? "blob" : "rect"
             let maxPieceSize = min(6, (currentGridSize / 2) + 1)
             let size = min(remainingEmpty, Int(rng.next() * Double(maxPieceSize)) + 2)
 
             let shapeData: BlockPiece?
-
             if shapeType == "rect" {
                 shapeData = growRectangle(vGrid: &virtualGrid, sx: sx, sy: sy, targetSize: size)
             } else {
@@ -134,111 +220,19 @@ class GameViewModel: ObservableObject {
             }
 
             if let shape = shapeData, !shape.matrix.isEmpty {
-                piecesForTray.append(shape)
-
-                // Deduct from remaining
-                var count = 0
-                for row in shape.matrix {
-                    for val in row {
-                        if val == 1 { count += 1 }
-                    }
-                }
+                generatedPieces.append(shape)
+                let count = shape.matrix.flatMap { $0 }.filter { $0 == 1 }.count
                 remainingEmpty -= count
             }
         }
 
-        self.tray = piecesForTray
-        self.totalBlocks = piecesForTray.count
+        // 4. Parçaları Tepsiye Ata
+        // DÜZELTME: Queue yok, refill yok. Hepsi direkt tepsiye.
+        self.tray = generatedPieces
+        self.totalPiecesTarget = generatedPieces.count
     }
 
-    // MARK: - Shape Growing Algorithms
-
-    private func growRectangle(vGrid: inout [[Int]], sx: Int, sy: Int, targetSize: Int) -> BlockPiece? {
-        guard let rng = self.rng else { return nil }
-        var attempts = 0
-
-        while attempts < 10 {
-            attempts += 1
-            let w = Int(rng.next() * Double(targetSize)) + 1
-            let h = Int(ceil(Double(targetSize) / Double(w)))
-
-            if (w * h) > (targetSize + 2) { continue }
-            if (sx + w > currentGridSize) || (sy + h > currentGridSize) { continue }
-
-            var fits = true
-            for y in 0..<h {
-                for x in 0..<w {
-                    if vGrid[sy + y][sx + x] == 0 {
-                        fits = false
-                        break
-                    }
-                }
-                if !fits { break }
-            }
-
-            if fits {
-                // Mark used in virtual grid
-                for y in 0..<h {
-                    for x in 0..<w {
-                        vGrid[sy + y][sx + x] = 0
-                    }
-                }
-                let matrix = Array(repeating: Array(repeating: 1, count: w), count: h)
-                return BlockPiece(matrix: matrix, color: getRandomColor(), targetX: sx, targetY: sy)
-            }
-        }
-
-        // Fallback to blob
-        return growBlob(vGrid: &vGrid, sx: sx, sy: sy, targetSize: targetSize)
-    }
-
-    private struct Point: Hashable { let x: Int; let y: Int }
-
-    private func growBlob(vGrid: inout [[Int]], sx: Int, sy: Int, targetSize: Int) -> BlockPiece? {
-        guard let rng = self.rng else { return nil }
-
-        var region: [Point] = []
-        region.append(Point(x: sx, y: sy))
-        vGrid[sy][sx] = 0
-
-        var i = 0
-        while region.count < targetSize && i < region.count {
-            let current = region[i]
-            // dirs shuffle
-            var dirs = [[0,1], [0,-1], [1,0], [-1,0]]
-            // Minimal shuffle simulation using rng
-            dirs.sort { _, _ in rng.next() > 0.5 }
-
-            for d in dirs {
-                let nx = current.x + d[1]
-                let ny = current.y + d[0]
-
-                if nx >= 0 && nx < currentGridSize && ny >= 0 && ny < currentGridSize && vGrid[ny][nx] == 1 {
-                    vGrid[ny][nx] = 0
-                    region.append(Point(x: nx, y: ny))
-                }
-            }
-            i += 1
-        }
-
-        // Convert region to matrix
-        let minX = region.map { $0.x }.min() ?? 0
-        let minY = region.map { $0.y }.min() ?? 0
-        let maxX = region.map { $0.x }.max() ?? 0
-        let maxY = region.map { $0.y }.max() ?? 0
-
-        let width = maxX - minX + 1
-        let height = maxY - minY + 1
-
-        var matrix = Array(repeating: Array(repeating: 0, count: width), count: height)
-        for p in region {
-            matrix[p.y - minY][p.x - minX] = 1
-        }
-
-        return BlockPiece(matrix: matrix, color: getRandomColor(), targetX: minX, targetY: minY)
-    }
-
-
+    // refillTray() METODU SİLİNDİ (Artık ihtiyaç yok)
 
     // MARK: - Game Interaction
 
@@ -249,28 +243,21 @@ class GameViewModel: ObservableObject {
                 if matrix[r][c] == 1 {
                     let tx = x + c
                     let ty = y + r
-
-                    // Check Bounds
-                    if tx < 0 || tx >= currentGridSize || ty < 0 || ty >= currentGridSize {
-                        return false
-                    }
-
-                    // Check Collision
-                    if board[ty][tx].isFilled {
-                        return false
-                    }
+                    if tx < 0 || tx >= currentGridSize || ty < 0 || ty >= currentGridSize { return false }
+                    if board[ty][tx].isFilled { return false }
                 }
             }
         }
         return true
     }
 
-    func place(piece: BlockPiece, at x: Int, y: Int) {
-        // 1. Save History for Undo
-        // (Simplified: In a real app we'd deep copy board)
-        // For MVP we might skip complex Undo or implement it later
+    // MARK: - Game Interaction
 
-        // 2. Place on Board
+    func place(piece: BlockPiece, at x: Int, y: Int) {
+        // 1. Önce Durumu Kaydet (Undo için)
+        saveState()
+
+        // 2. Board'a Yaz
         let matrix = piece.matrix
         for r in 0..<matrix.count {
             for c in 0..<matrix[r].count {
@@ -283,34 +270,116 @@ class GameViewModel: ObservableObject {
             }
         }
 
-        // 3. Remove from Tray
+        // 3. Tepsiden Sil
         if let idx = tray.firstIndex(where: { $0.id == piece.id }) {
             tray.remove(at: idx)
         }
 
-        // 4. Check Win
-        checkWinCondition()
+        // 4. İlerlemeyi Güncelle
+        piecesPlacedCount += 1
 
-        // Reset Preview
+        // 5. YENİ KAZANMA KONTROLÜ: Tahta tamamen doldu mu?
+        if checkWinCondition() {
+            completeLevel()
+            return // Kazandık, aşağıya (game over kontrolüne) inmeye gerek yok.
+        }
+
+        // 6. KAYBETME KONTROLÜ:
+        // Tahta dolmadı AMA elimizdeki kalan parçalar boşluklara sığmıyor mu?
+        checkGameOver()
+
+        // Preview Temizle
         previewCells.removeAll()
     }
 
-    private func checkWinCondition() {
-        // Goal: Fill all cells?
-        // Logic from JS: if(boardState.every(r=>r.every(v=>v!==0)))
+    func completeLevel() {
+        gameStatus = "Victory!"
+        let reward = difficulty.levelClearReward
+        addCoins(amount: reward)
 
-        let allFilled = board.flatMap { $0 }.allSatisfy { $0.isFilled }
-        if allFilled {
-            gameStatus = "Victory!"
-            let reward = difficulty.levelClearReward
-            addCoins(amount: reward)
-            
-            // Advance level persistence
-            LevelManager.shared.advanceLevel()
+        // Level kaydet
+        if currentLevel < LevelLibrary.totalLevels {
+            UserDefaults.standard.set(currentLevel + 1, forKey: "userCurrentLevel")
+            currentLevel += 1
+        }
+
+        // Modal aç
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+            self.loadLevel(self.currentLevel)
+            self.showLevelStartModal = true
+            self.gameStatus = "Ready"
         }
     }
 
-    // MARK: - Economy
+    func nextLevel() {
+        if currentLevel < LevelLibrary.totalLevels {
+            loadLevel(currentLevel + 1)
+        } else {
+            // Oyun bitti, başa dön veya tebrik et
+            loadLevel(1)
+        }
+    }
+
+    // MARK: - Shape Growing Algorithms (Standard)
+
+    private func growRectangle(vGrid: inout [[Int]], sx: Int, sy: Int, targetSize: Int) -> BlockPiece? {
+        guard let rng = self.rng else { return nil }
+        var attempts = 0
+        while attempts < 10 {
+            attempts += 1
+            let w = Int(rng.next() * Double(targetSize)) + 1
+            let h = Int(ceil(Double(targetSize) / Double(w)))
+            if (w * h) > (targetSize + 2) { continue }
+            if (sx + w > currentGridSize) || (sy + h > currentGridSize) { continue }
+            var fits = true
+            for y in 0..<h {
+                for x in 0..<w {
+                    if vGrid[sy + y][sx + x] == 0 { fits = false; break }
+                }
+                if !fits { break }
+            }
+            if fits {
+                for y in 0..<h { for x in 0..<w { vGrid[sy + y][sx + x] = 0 } }
+                let matrix = Array(repeating: Array(repeating: 1, count: w), count: h)
+                return BlockPiece(matrix: matrix, color: getRandomColor(), targetX: sx, targetY: sy)
+            }
+        }
+        return growBlob(vGrid: &vGrid, sx: sx, sy: sy, targetSize: targetSize)
+    }
+
+    private struct Point: Hashable { let x: Int; let y: Int }
+
+    private func growBlob(vGrid: inout [[Int]], sx: Int, sy: Int, targetSize: Int) -> BlockPiece? {
+        guard let rng = self.rng else { return nil }
+        var region: [Point] = [Point(x: sx, y: sy)]
+        vGrid[sy][sx] = 0
+        var i = 0
+        while region.count < targetSize && i < region.count {
+            let current = region[i]
+            var dirs = [[0,1], [0,-1], [1,0], [-1,0]]
+            dirs.sort { _, _ in rng.next() > 0.5 }
+            for d in dirs {
+                let nx = current.x + d[1]
+                let ny = current.y + d[0]
+                if nx >= 0 && nx < currentGridSize && ny >= 0 && ny < currentGridSize && vGrid[ny][nx] == 1 {
+                    vGrid[ny][nx] = 0
+                    region.append(Point(x: nx, y: ny))
+                }
+            }
+            i += 1
+        }
+        let minX = region.map { $0.x }.min() ?? 0
+        let minY = region.map { $0.y }.min() ?? 0
+        let maxX = region.map { $0.x }.max() ?? 0
+        let maxY = region.map { $0.y }.max() ?? 0
+        let width = maxX - minX + 1
+        let height = maxY - minY + 1
+        var matrix = Array(repeating: Array(repeating: 0, count: width), count: height)
+        for p in region { matrix[p.y - minY][p.x - minX] = 1 }
+        return BlockPiece(matrix: matrix, color: getRandomColor(), targetX: minX, targetY: minY)
+    }
+
+    // MARK: - Economy & Powerups
 
     func addCoins(amount: Int) {
         coins += amount
@@ -326,104 +395,137 @@ class GameViewModel: ObservableObject {
         return false
     }
 
-    // MARK: - Powerups
-
-    func useHint() {
-        let cost = 100
-        guard !tray.isEmpty else { return }
-
-        // Check if user has free hints or needs to pay (simplified to pay only for now)
-        if spendCoins(amount: cost) {
-            // Find a piece that fits
-            // JS: calls findBestPlacement logic
-            // In Swift we would scan the board for valid placements using canPlace
-            for piece in tray {
-                if let placement = findPlacement(for: piece) {
-                    // Auto place it
-                    place(piece: piece, at: placement.x, y: placement.y)
-                    return
-                }
+    // MARK: - Game Context Conformance & Joker Usage
+    // Note: Conformance is declared in extension usually, but here for simplicity:
+    // GameViewModel: GameContext
+    
+    // Joker Manager
+    var jokerManager: JokerManager = .standard
+    
+    func useJoker(id: JokerType) {
+//        if coins <= 100 { self.coins = 950 }
+        guard let joker = jokerManager.getJoker(id: id) else { return }
+        
+        // Execute
+        // We pass 'self' as context. 
+        // Since execute returns Bool, we can handle feedback here if needed.
+        withAnimation(Animation.easeIn.delay(0.05)) {
+            let success = joker.execute(context: self)
+            if !success {
+                let generator = UINotificationFeedbackGenerator()
+                generator.notificationOccurred(.error)
             }
         }
     }
 
-    private func findPlacement(for piece: BlockPiece) -> (x: Int, y: Int)? {
-        // Brute force scan
+    func useHint() {
+        useJoker(id: .hint)
+    }
+    
+    func triggerUndo() {
+        useJoker(id: .undo)
+    }
+    
+    func triggerJokerModal() {
+        useJoker(id: .piece)
+    }
+
+    // --- FIND PLACEMENT (TARGET BASED) ---
+    // GÜNCELLENMİŞ FIND PLACEMENT
+    func findPlacement(for piece: BlockPiece) -> (x: Int, y: Int)? {
+        if let tx = piece.targetX, let ty = piece.targetY {
+            if canPlace(piece: piece, at: tx, y: ty) {
+                return (tx, ty)
+            }
+        }
         for y in 0..<currentGridSize {
             for x in 0..<currentGridSize {
                 if canPlace(piece: piece, at: x, y: y) {
-                    // Check if this placement matches the target (if we wanted to be strict)
-                    // But any valid placement is OK for a hint usually
-                    // The JS code actually checks `canPlacePerfectly` which checks if `s.targetX` matches.
-                    // Since we stored targetX/Y in BlockPiece, we can use that!
-                    if let tx = piece.targetX, let ty = piece.targetY {
-                        if x == tx && y == ty {
-                            return (x, y)
-                        }
-                    }
-                    // Fallback if we lost target info or it's flexible
                     return (x, y)
                 }
             }
         }
+
         return nil
     }
 
+    // MARK: - Helpers
+
     func createJokerPiece(matrix: [[Int]]) -> Bool {
-        // Cost: 200
+        // Önce matrisi kırp (Gereksiz boşlukları at)
+        let trimmedMatrix = trimMatrix(matrix)
+
+        // Eğer boş bir şekil çizildiyse işlem yapma (veya uyarı ver)
+        if trimmedMatrix.isEmpty { return false }
+
         if spendCoins(amount: 200) {
-            // Trim matrix logic (cropMat in JS)
-            // Find bounds
-            var minX=5, maxX = -1, minY=5, maxY = -1
-            for r in 0..<5 {
-                for c in 0..<5 {
-                    if matrix[r][c] == 1 {
-                        if c < minX { minX = c }
-                        if c > maxX { maxX = c }
-                        if r < minY { minY = r }
-                        if r > maxY { maxY = r }
-                    }
-                }
-            }
+            // Kırpılmış matris ile parça oluştur
+            let piece = BlockPiece(
+                matrix: trimmedMatrix,
+                color: "c-3", // Joker rengi
+                targetX: nil,
+                targetY: nil
+            )
 
-            let h = maxY - minY + 1
-            let w = maxX - minX + 1
-            var newItem = Array(repeating: Array(repeating: 0, count: w), count: h)
-
-            for r in 0..<h {
-                for c in 0..<w {
-                    newItem[r][c] = matrix[minY+r][minX+c]
-                }
-            }
-
-            let piece = BlockPiece(matrix: newItem, color: "c-3", targetX: nil, targetY: nil)
+            // Tepsiye ekle
             tray.append(piece)
             return true
         }
         return false
     }
 
+    // Matrisin etrafındaki boş (0) satır ve sütunları kesip atar
+    private func trimMatrix(_ matrix: [[Int]]) -> [[Int]] {
+        var minX = Int.max
+        var maxX = -1
+        var minY = Int.max
+        var maxY = -1
+        var hasOnes = false
+
+        // 1. Sınırları (Bounding Box) bul
+        for y in 0..<matrix.count {
+            for x in 0..<matrix[y].count {
+                if matrix[y][x] == 1 {
+                    hasOnes = true
+                    if x < minX { minX = x }
+                    if x > maxX { maxX = x }
+                    if y < minY { minY = y }
+                    if y > maxY { maxY = y }
+                }
+            }
+        }
+
+        // Eğer matris tamamen boşsa (kullanıcı hiçbir şey çizmediyse)
+        if !hasOnes { return [] }
+
+        // 2. Yeni boyutları hesapla
+        let height = maxY - minY + 1
+        let width = maxX - minX + 1
+
+        // 3. Yeni matrisi oluştur ve verileri kopyala
+        var newMatrix = Array(repeating: Array(repeating: 0, count: width), count: height)
+
+        for y in 0..<height {
+            for x in 0..<width {
+                // Orijinal matristen, hesaplanan offset'e göre veri al
+                newMatrix[y][x] = matrix[minY + y][minX + x]
+            }
+        }
+
+        return newMatrix
+    }
+
     func findBestPlacement(nearGridX centerGx: Int, nearGridY centerGy: Int, piece: BlockPiece) -> (x: Int, y: Int)? {
         let offsetX = piece.matrix[0].count / 2
         let offsetY = piece.matrix.count / 2
-
-        var bestX = -1
-        var bestY = -1
-        var minD = Double.infinity
-
-        // Exact port of JS Logic:
-        // const centerGx = Math.round((relX / cellPixelSize) - 0.5);
-        // centerGx is passed in.
-        // Loop dy -1 to 1, dx -1 to 1
+        var bestX = -1, bestY = -1, minD = Double.infinity
 
         for dy in -1...1 {
             for dx in -1...1 {
                 let csx = (centerGx + dx) - offsetX
                 let csy = (centerGy + dy) - offsetY
-
                 if canPlace(piece: piece, at: csx, y: csy) {
-                    // const dist = Math.sqrt(Math.pow(dx, 2) + Math.pow(dy, 2));
-                    let dist = Double(dx*dx + dy*dy) // Comparison works without sqrt
+                    let dist = Double(dx*dx + dy*dy)
                     if dist < minD {
                         minD = dist
                         bestX = csx
@@ -432,28 +534,19 @@ class GameViewModel: ObservableObject {
                 }
             }
         }
-
-        if bestX != -1 {
-            return (bestX, bestY)
-        }
+        if bestX != -1 { return (bestX, bestY) }
         return nil
     }
 
     func updatePreview(nearGridX gX: Int, nearGridY gY: Int, piece: BlockPiece?) {
-        guard let piece = piece else {
-            previewCells.removeAll()
-            return
-        }
-
+        guard let piece = piece else { previewCells.removeAll(); return }
         if let best = findBestPlacement(nearGridX: gX, nearGridY: gY, piece: piece) {
             var newPreview: Set<String> = []
             let matrix = piece.matrix
             for r in 0..<matrix.count {
                 for c in 0..<matrix[r].count {
                     if matrix[r][c] == 1 {
-                        let tx = best.x + c
-                        let ty = best.y + r
-                        newPreview.insert("\(tx),\(ty)")
+                        newPreview.insert("\(best.x + c),\(best.y + r)")
                     }
                 }
             }
@@ -464,13 +557,15 @@ class GameViewModel: ObservableObject {
     }
 
     func getRandomColor() -> String {
-
         guard let rng = self.rng else { return "c-0" }
-        if difficulty == .god && rng.next() > 0.8 {
-            return "c-god"
-        }
+        if difficulty == .god && rng.next() > 0.8 { return "c-god" }
         let idx = Int(rng.next() * Double(colors.count))
         return colors[min(idx, colors.count - 1)]
     }
 }
 
+// Titreşim Yardımcısı
+func hapticFeedback(style: UIImpactFeedbackGenerator.FeedbackStyle) {
+    let generator = UIImpactFeedbackGenerator(style: style)
+    generator.impactOccurred()
+}
