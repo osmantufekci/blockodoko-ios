@@ -7,7 +7,7 @@ struct HeaderView: View {
         VStack {
             // Title & Coins
             HStack {
-                Text("Grid Master")
+                Text("Blockodoko")
                     .font(.title2)
                     .bold()
                     .foregroundColor(Color(hex: "eee"))
