@@ -26,21 +26,45 @@ class GameViewModel: ObservableObject {
     // MARK: - Level Generation
 
     func startLevel(difficulty: Difficulty, specificSeed: String? = nil) {
-        self.difficulty = difficulty
-        self.currentGridSize = difficulty.gridSize
+        var finalDifficulty = difficulty
+        var finalSeed = specificSeed
+        
+        // 1. If specificSeed is provided, try to parse difficulty from it
+        if let seed = specificSeed, !seed.isEmpty {
+            // Expected format: "D..." where D is digit 0-6 representing difficulty index
+            let firstChar = seed.prefix(1)
+            if let index = Int(firstChar), index >= 0 && index < Difficulty.allCases.count {
+                 finalDifficulty = Difficulty.allCases[index]
+            }
+            finalSeed = seed
+        } else {
+            // 2. No seed provided, generate one with the CURRENT difficulty
+            finalSeed = generateRandomSeed(difficulty: difficulty)
+        }
+        
+        guard let seed = finalSeed else { return }
 
-        // Generate Seed
-        let seed = specificSeed ?? generateRandomSeed()
+        self.difficulty = finalDifficulty
+        self.currentGridSize = finalDifficulty.gridSize
         self.displayLevelSeed = seed
         self.rng = SeededRNG(seedString: seed)
 
-        generateLevel(difficulty: difficulty)
+        generateLevel(difficulty: finalDifficulty)
+        print("seed:", seed)
     }
 
-    private func generateRandomSeed() -> String {
+    private func generateRandomSeed(difficulty: Difficulty? = nil) -> String {
+        // If difficulty is passed, prepend its index
+        let diff = difficulty ?? self.difficulty
+        
+        // Find index of difficulty
+        let index = Difficulty.allCases.firstIndex(of: diff) ?? 0
+        
         let timestamp = String(Int(Date().timeIntervalSince1970), radix: 36)
         let randomPart = String(Int.random(in: 10000...99999), radix: 36)
-        return (timestamp + randomPart).uppercased()
+        let coreSeed = (timestamp + randomPart).uppercased()
+        
+        return "\(index)\(coreSeed)"
     }
 
     private func generateLevel(difficulty: Difficulty) {

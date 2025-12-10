@@ -188,5 +188,5 @@ struct MainGameView: View {
 }
 
 #Preview {
-    MainGameView(difficulty: .medHard, seed: "med-hard:mj01w4pypvr7fnfjf9a")
+    MainGameView(seed: "2T725OB1SU6")
 }
