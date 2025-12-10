@@ -18,6 +18,7 @@ struct TrayView: View {
                                     .onChanged { value in
                                         if draggedPiece == nil {
                                             draggedPiece = piece
+                                            HapticManager.shared.liftPiece()
                                         }
                                         dragLocation = value.location
                                         dragOffset = value.translation
