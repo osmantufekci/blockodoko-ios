@@ -1,15 +1,22 @@
 import SwiftUI
 
 struct MainGameView: View {
+    let difficulty: Difficulty
+    let seed: String?
     @StateObject private var viewModel = GameViewModel()
-    
+
     // Drag State
     @State private var draggedPiece: BlockPiece?
     @State private var dragLocation: CGPoint = .zero
     @State private var dragOffset: CGSize = .zero
     @State private var boardFrame: CGRect = .zero
     @State private var showJokerModal: Bool = false
-    
+
+    init(difficulty: Difficulty = .medHard, seed: String? = nil) {
+        self.difficulty = difficulty
+        self.seed = seed
+    }
+
     var body: some View {
         ZStack {
             Color.themeBackground.edgesIgnoringSafeArea(.all)
@@ -110,6 +117,11 @@ struct MainGameView: View {
                 }
             }
         )
+        .onAppear {
+            if viewModel.board.isEmpty {
+                viewModel.startLevel(difficulty: difficulty, specificSeed: seed)
+            }
+        }
     }
 
     private func updateGhost(location: CGPoint, piece: BlockPiece?) {
@@ -176,5 +188,5 @@ struct MainGameView: View {
 }
 
 #Preview {
-    MainGameView()
+    MainGameView(difficulty: .medHard, seed: "med-hard:mj01w4pypvr7fnfjf9a")
 }
