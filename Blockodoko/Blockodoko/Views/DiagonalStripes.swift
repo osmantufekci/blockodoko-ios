@@ -1,3 +1,11 @@
+//
+//  DiagonalStripes.swift
+//  Blockodoko
+//
+//  Created by Osman Tüfekçi on 11.12.2025.
+//
+
+
 import SwiftUI
 
 struct DiagonalStripes: Shape {
