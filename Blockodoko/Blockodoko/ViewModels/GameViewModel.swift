@@ -168,12 +168,8 @@ class GameViewModel: ObservableObject, GameContext {
     }
 
     func returnPieceToTray(_ piece: BlockPiece) {
-        // Eğer bu parça zaten tepsideyse (örneğin tepsiden alıp geri koyduysa)
-        // duplicate olmasın diye kontrol edebilirsin.
         if !tray.contains(where: { $0.id == piece.id }) {
-            tray.append(piece)
-            // İlerlemeyi güncellemek gerekebilir mi?
-            // piecesPlacedCount zaten liftPiece'de düşülmüştü, burada bir şey yapmaya gerek yok.
+            tray.insert(piece, at: 0)
         }
     }
 
