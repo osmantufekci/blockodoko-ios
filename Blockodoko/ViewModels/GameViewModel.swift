@@ -8,7 +8,7 @@ import SwiftUI
 import Combine
 
 // MARK: - Game View Model
-class GameViewModel: ObservableObject, GameContext {
+final class GameViewModel: ObservableObject, GameContext {
     // --- PUBLISHED STATE ---
     @Published var board: [[Cell]] = []
     @Published var tray: [BlockPiece] = [] // Artık TÜM parçalar burada duracak
@@ -34,12 +34,43 @@ class GameViewModel: ObservableObject, GameContext {
     private let colors = ["c-0", "c-1", "c-2", "c-3", "c-4", "c-5"]
 
     init() {
-//        UserDefaults.standard.removeObject(forKey: "userCurrentLevel")
-        self.currentLevel = UserDefaults.standard.integer(forKey: "userCurrentLevel")
-        if self.currentLevel == 0 { self.currentLevel = 1 }
+        let cloudLevel = CloudStoreManager.shared.getLevel()
+        let cloudCoins = CloudStoreManager.shared.getCoins()
 
-        self.coins = UserDefaults.standard.integer(forKey: "gm_coins")
-        if self.coins <= 100 { self.coins = 1000 }
+        if cloudLevel > 0 {
+            self.currentLevel = cloudLevel
+            self.coins = cloudCoins
+        } else {
+
+            self.currentLevel = UserDefaults.standard.integer(forKey: "userCurrentLevel")
+            self.coins = UserDefaults.standard.integer(forKey: "gm_coins")
+            if self.currentLevel == 0 { self.currentLevel = 1 }
+            if self.coins == 0 { self.coins = 1000 }
+        }
+
+        NotificationCenter.default.addObserver(self, selector: #selector(handleCloudUpdate), name: .cloudDataUpdated, object: nil)
+    }
+
+    @objc func handleCloudUpdate() {
+        DispatchQueue.main.async {
+            let newLevel = CloudStoreManager.shared.getLevel()
+            let newCoins = CloudStoreManager.shared.getCoins()
+
+            if newLevel > self.currentLevel {
+                self.currentLevel = newLevel
+                self.loadLevel(newLevel)
+            }
+            if newCoins > self.coins {
+                self.coins = newCoins
+            }
+        }
+    }
+
+    func saveProgress() {
+        UserDefaults.standard.set(currentLevel, forKey: "userCurrentLevel")
+        UserDefaults.standard.set(coins, forKey: "gm_coins")
+
+        CloudStoreManager.shared.save(level: currentLevel, coins: coins)
     }
 
     // MARK: - Level Loading Logic
@@ -351,7 +382,7 @@ class GameViewModel: ObservableObject, GameContext {
 
         // Level kaydet
         if currentLevel < LevelLibrary.totalLevels {
-            UserDefaults.standard.set(currentLevel + 1, forKey: "userCurrentLevel")
+            saveProgress()
             currentLevel += 1
         }
 
@@ -435,13 +466,13 @@ class GameViewModel: ObservableObject, GameContext {
 
     func addCoins(amount: Int) {
         coins += amount
-        UserDefaults.standard.set(coins, forKey: "gm_coins")
+        saveProgress()
     }
 
     func spendCoins(amount: Int) -> Bool {
         if coins >= amount {
             coins -= amount
-            UserDefaults.standard.set(coins, forKey: "gm_coins")
+            saveProgress()
             return true
         }
         return false
