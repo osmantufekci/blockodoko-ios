@@ -12,10 +12,9 @@ struct CellView: View {
                 .frame(width: size, height: size)
             
             if cell.isFilled, cell.isLocked {
-                // Diagonal stripes or locked look
-                Image(systemName: "lock.fill")
-                    .font(.system(size: size * 0.4))
-                    .foregroundColor(.white.opacity(0.3))
+                DiagonalStripes()
+                    .stroke(Color.white.opacity(0.15), lineWidth: 2)
+                    .clipShape(Rectangle())
             }
         }
         .overlay(
@@ -40,5 +39,6 @@ struct CellView: View {
 }
 
 #Preview {
-    CellView(cell: Cell(x: 4, y: 8), size: .init(32))
+    var cell = Cell(x: 4, y: 8, isFilled: true, isLocked: true)
+    return CellView(cell: cell, size: .init(64))
 }
