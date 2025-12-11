@@ -34,13 +34,12 @@ class GameViewModel: ObservableObject, GameContext {
     private let colors = ["c-0", "c-1", "c-2", "c-3", "c-4", "c-5"]
 
     init() {
-        UserDefaults.standard.removeObject(forKey: "userCurrentLevel")
+//        UserDefaults.standard.removeObject(forKey: "userCurrentLevel")
         self.currentLevel = UserDefaults.standard.integer(forKey: "userCurrentLevel")
         if self.currentLevel == 0 { self.currentLevel = 1 }
 
         self.coins = UserDefaults.standard.integer(forKey: "gm_coins")
         if self.coins <= 100 { self.coins = 1000 }
-        print("userdefaults level:", UserDefaults.standard.integer(forKey: "userCurrentLevel"))
     }
 
     // MARK: - Level Loading Logic
@@ -174,20 +173,14 @@ class GameViewModel: ObservableObject, GameContext {
     }
 
     func undoMove() {
-        // 1. Geçmiş boşsa işlem yapma
         guard let lastState = moveHistory.popLast() else { return }
 
-        // 2. Maliyeti düş (Eğer Game Over ekranından çağrılıyorsa zaten orada kontrol edilebilir
-        // ama butondan çağrılıyorsa buradan düşmek gerekir.)
-        // Not: Eğer Game Over ekranında "Bedava" veya "Reklamla" vereceksen buradaki if'i kaldırabilirsin.
         let cost = 50
         if spendCoins(amount: cost) {
             applySnapshot(lastState)
         } else {
-            // Para yetmediyse geçmişi geri yerine koy (Pop etmiştik)
             moveHistory.append(lastState)
 
-            // Titreşim (Hata)
             let generator = UINotificationFeedbackGenerator()
             generator.notificationOccurred(.error)
         }
@@ -289,8 +282,6 @@ class GameViewModel: ObservableObject, GameContext {
         self.tray = generatedPieces
         self.totalPiecesTarget = generatedPieces.count
     }
-
-    // refillTray() METODU SİLİNDİ (Artık ihtiyaç yok)
 
     // MARK: - Game Interaction
 
