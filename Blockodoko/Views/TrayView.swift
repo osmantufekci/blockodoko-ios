@@ -36,30 +36,26 @@ struct TrayView: View {
                                         if draggedPiece == nil {
                                             HapticManager.shared.liftPiece()
                                             draggedPiece = piece
-
-                                            // Offset ayarı: Parça parmağın biraz üstünde görünsün
                                             dragOffset = CGSize(width: 0, height: -60)
                                         }
 
-                                        // Konumu güncelle
                                         dragLocation = value.location
                                     }
                                     .onEnded { _ in
-                                        // Bırakma işlemi MainGameView'da yönetiliyor
-                                        // Burası boş kalabilir veya temizlik yapılabilir
+                                        draggedPiece = nil
+                                        dragOffset = .zero
+                                        dragLocation = .zero
                                     }
                             )
                     }
                 }
                 .padding()
-                // ScrollView içeriği en az ekran genişliği kadar olsun
                 .frame(minWidth: geo.size.width, alignment: .leading)
             }
-            // Sadece TEPSİ boyutunu hesapla (Parçalarınkini değil)
             .onAppear {
                 self.trayFrame = geo.frame(in: .global)
             }
-            .onChange(of: geo.frame(in: .global)) { newFrame in
+            .onChange(of: geo.frame(in: .global)) { newFrame, _ in
                 self.trayFrame = newFrame
             }
         }
