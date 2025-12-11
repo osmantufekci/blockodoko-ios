@@ -5,6 +5,8 @@ import SwiftUI
 // Assuming same target, we can forward declare or use GameViewModel if available.
 // To be safe and clean, let's define the interface the Jokers need.
 
+//FUTURE NOTE: yerinden oynatma ve hücre silme jokeri
+
 protocol GameContext: AnyObject {
     var coins: Int { get set }
     var tray: [BlockPiece] { get set }
