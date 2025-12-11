@@ -227,6 +227,7 @@ struct MainGameView: View {
                 draggedPiece = nil
                 dragLocation = .zero
                 dragOffset = .zero
+                return
             }
         }
 
