@@ -122,6 +122,7 @@ struct MainGameView: View {
             if viewModel.showJokerModal {
                 JokerModalView(viewModel: viewModel, isPresented: $viewModel.showJokerModal)
                     .zIndex(200)
+                    .opacity(0.75)
             }
 
             if viewModel.showLevelStartModal {
