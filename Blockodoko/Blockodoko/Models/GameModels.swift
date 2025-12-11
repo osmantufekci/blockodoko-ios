@@ -54,10 +54,10 @@ enum Difficulty: String, CaseIterable, Identifiable {
 
 // MARK: - Game Entities
 struct BlockPiece: Identifiable, Equatable {
-    let id = UUID()
-    let matrix: [[Int]] // 0 or 1
-    let color: String   // e.g. "c-1", "c-god"
-    
+    var id = UUID()
+    var matrix: [[Int]] // 0 or 1
+    var color: String   // e.g. "c-1", "c-god"
+
     // For level generation usage
     var targetX: Int?
     var targetY: Int?
@@ -72,6 +72,7 @@ struct Cell: Identifiable, Equatable {
     var isLocked: Bool = false // Preset blocks
     
     var isEmpty: Bool { !isFilled }
+    var pieceID: UUID?
 }
 
 enum GameState {

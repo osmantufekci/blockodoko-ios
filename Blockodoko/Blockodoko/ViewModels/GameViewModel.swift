@@ -115,6 +115,68 @@ class GameViewModel: ObservableObject, GameContext {
         // showGameOverModal = true
     }
 
+    func liftPiece(at x: Int, y: Int) -> BlockPiece? {
+        let cell = board[y][x]
+
+        // Boşsa veya kilitliyse (engel) işlem yapma
+        if !cell.isFilled || cell.isLocked { return nil }
+
+        // Parçanın ID'sini al
+        guard let pID = cell.pieceID else { return nil }
+
+        // 1. Parçanın tahtadaki sınırlarını ve şeklini bul
+        var minX = Int.max, maxX = Int.min
+        var minY = Int.max, maxY = Int.min
+        var cellsToClear: [(x: Int, y: Int)] = []
+
+        for r in 0..<currentGridSize {
+            for c in 0..<currentGridSize {
+                if board[r][c].pieceID == pID {
+                    cellsToClear.append((c, r))
+                    if c < minX { minX = c }
+                    if c > maxX { maxX = c }
+                    if r < minY { minY = r }
+                    if r > maxY { maxY = r }
+                }
+            }
+        }
+
+        // 2. Orijinal Matrisi Yeniden Oluştur (Reconstruct)
+        let width = maxX - minX + 1
+        let height = maxY - minY + 1
+        var matrix = Array(repeating: Array(repeating: 0, count: width), count: height)
+
+        for cellCoord in cellsToClear {
+            matrix[cellCoord.y - minY][cellCoord.x - minX] = 1
+            // Tahtayı temizle
+            board[cellCoord.y][cellCoord.x].isFilled = false
+            board[cellCoord.y][cellCoord.x].pieceID = nil
+            board[cellCoord.y][cellCoord.x].color = "c-0"
+        }
+
+        // 3. İlerlemeyi geri al
+        piecesPlacedCount -= 1
+
+        // 4. Parçayı oluştur ve döndür (Rengi koruyoruz)
+        return BlockPiece(
+            id: pID,
+            matrix: matrix,
+            color: cell.color ?? "c-0",
+            targetX: nil,
+            targetY: nil
+        )
+    }
+
+    func returnPieceToTray(_ piece: BlockPiece) {
+        // Eğer bu parça zaten tepsideyse (örneğin tepsiden alıp geri koyduysa)
+        // duplicate olmasın diye kontrol edebilirsin.
+        if !tray.contains(where: { $0.id == piece.id }) {
+            tray.append(piece)
+            // İlerlemeyi güncellemek gerekebilir mi?
+            // piecesPlacedCount zaten liftPiece'de düşülmüştü, burada bir şey yapmaya gerek yok.
+        }
+    }
+
     func undoMove() {
         // 1. Geçmiş boşsa işlem yapma
         guard let lastState = moveHistory.popLast() else { return }
@@ -266,6 +328,7 @@ class GameViewModel: ObservableObject, GameContext {
                     let ty = y + r
                     board[ty][tx].isFilled = true
                     board[ty][tx].color = piece.color
+                    board[ty][tx].pieceID = piece.id
                 }
             }
         }

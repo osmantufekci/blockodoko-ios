@@ -10,6 +10,7 @@ struct MainGameView: View {
     @State private var dragLocation: CGPoint = .zero
     @State private var dragOffset: CGSize = .zero
     @State private var boardFrame: CGRect = .zero
+    @State private var trayFrame: CGRect = .zero
 
     init(difficulty: Difficulty = .medHard, seed: String? = nil) {
         self.difficulty = difficulty
@@ -25,11 +26,33 @@ struct MainGameView: View {
                 
                 Spacer()
 
-                GameBoardView(viewModel: viewModel, boardFrame: $boardFrame)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .aspectRatio(1, contentMode: .fit)
-                    .padding(.horizontal)
-                    .zIndex(1)
+                GameBoardView(
+                    viewModel: viewModel,
+                    boardFrame: $boardFrame,
+                    onLiftPiece: { piece, location in
+                        if draggedPiece == nil {
+                            HapticManager.shared.liftPiece()
+                            draggedPiece = piece
+                            dragLocation = location
+                            dragOffset = .zero
+                        }
+                    },
+                    onDragChanged: { location in
+                        if draggedPiece != nil {
+                            dragLocation = location
+                            updateGhost(location: location, piece: draggedPiece)
+                        }
+                    },
+                    onDragEnded: { location in
+                        if draggedPiece != nil {
+                            handleDrop(location: location)
+                        }
+                    }
+                )
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .aspectRatio(1, contentMode: .fit)
+                .padding(.horizontal)
+                .zIndex(1)
                  
                 Spacer()
 
@@ -57,7 +80,8 @@ struct MainGameView: View {
                     viewModel: viewModel,
                     draggedPiece: $draggedPiece,
                     dragLocation: $dragLocation,
-                    dragOffset: $dragOffset
+                    dragOffset: $dragOffset,
+                    trayFrame: $trayFrame
                 )
                 .simultaneousGesture(
                     DragGesture(coordinateSpace: .global)
@@ -81,6 +105,7 @@ struct MainGameView: View {
 
             if let piece = draggedPiece {
                 PieceView(piece: piece, cellSize: 40)
+                    .scaleEffect(1.1)
                     .position(dragLocation)
                     .offset(y: -100)
                     .zIndex(100)
@@ -148,7 +173,7 @@ struct MainGameView: View {
     private func updateGhost(location: CGPoint, piece: BlockPiece?) {
         // AYAR 1: Offset'i -100 yerine -80 yaptık.
         // Eğer hala çok yüksekse -60 yap, çok alçaksa -120 yap.
-        let yOffset: CGFloat = -50
+        let yOffset: CGFloat = -30
         let piecePoint = CGPoint(x: location.x, y: location.y + yOffset)
 
         guard let piece = piece, boardFrame.contains(piecePoint) else {
@@ -176,13 +201,12 @@ struct MainGameView: View {
         guard let piece = draggedPiece else { return }
 
         viewModel.updatePreview(nearGridX: -1, nearGridY: -1, piece: nil)
+        let pieceVisualCenter = CGPoint(x: location.x + dragOffset.width, y: location.y + dragOffset.height)
 
-        // AYAR 1: Buradaki offset değeri updateGhost ile AYNI olmalı (-80)
-        let yOffset: CGFloat = -50
+        let yOffset: CGFloat = -30
         let piecePoint = CGPoint(x: location.x, y: location.y + yOffset)
 
         if boardFrame.contains(piecePoint) {
-
             let cellSize = (boardFrame.width - (2 * CGFloat(viewModel.board.count - 1))) / CGFloat(viewModel.board.count)
             let spacing: CGFloat = 2
 
@@ -198,13 +222,22 @@ struct MainGameView: View {
             if let best = viewModel.findBestPlacement(nearGridX: gX, nearGridY: gY, piece: piece) {
                 viewModel.place(piece: piece, at: best.x, y: best.y)
 
-                let impact = UIImpactFeedbackGenerator(style: .medium)
-                impact.impactOccurred()
+                HapticManager.shared.placePiece()
+
+                draggedPiece = nil
+                dragLocation = .zero
+                dragOffset = .zero
             }
         }
 
+        withAnimation {
+            viewModel.returnPieceToTray(piece)
+        }
+
+        HapticManager.shared.error()
+
         draggedPiece = nil
-        dragLocation = .zero
+        dragOffset = .zero
     }
 }
 
