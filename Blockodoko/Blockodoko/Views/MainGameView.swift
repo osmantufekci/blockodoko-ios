@@ -11,6 +11,8 @@ struct MainGameView: View {
     @State private var dragOffset: CGSize = .zero
     @State private var boardFrame: CGRect = .zero
     @State private var trayFrame: CGRect = .zero
+    @State private var isReturning: Bool = false
+    @State private var targetLocation: CGPoint? = nil
 
     init(difficulty: Difficulty = .medHard, seed: String? = nil) {
         self.difficulty = difficulty
@@ -86,11 +88,14 @@ struct MainGameView: View {
                 .simultaneousGesture(
                     DragGesture(coordinateSpace: .global)
                         .onChanged { value in
-                            // Update Ghost Preview
+                            if targetLocation == nil {
+                                targetLocation = value.location
+                            }
                             updateGhost(location: value.location, piece: draggedPiece)
                         }
                         .onEnded { value in
                             handleDrop(location: value.location)
+                            targetLocation = nil
                         }
                 )
                 .padding(.bottom)
@@ -110,6 +115,7 @@ struct MainGameView: View {
                     .offset(y: -100)
                     .zIndex(100)
                     .allowsHitTesting(false)
+                    .animation(.spring(), value: isReturning)
             }
 
             // Modals
@@ -145,7 +151,9 @@ struct MainGameView: View {
                         viewModel.showGameOverModal = false
 
                         withAnimation(Animation.easeIn.delay(0.25)) {
-                            viewModel.undoMove()
+                            if viewModel.coins >= JokerManager.standard.getJoker(id: .undo)?.cost ?? 50 {
+                                viewModel.undoMove()
+                            }
                         }
                     }
                 )
@@ -231,14 +239,29 @@ struct MainGameView: View {
             }
         }
 
-        withAnimation {
-            viewModel.returnPieceToTray(piece)
-        }
+        animateReturnToTray(piece: piece)
+    }
 
+    private func animateReturnToTray(piece: BlockPiece) {
+        print(#function)
         HapticManager.shared.error()
 
-        draggedPiece = nil
-        dragOffset = .zero
+        isReturning = true
+
+        let targetX = targetLocation?.x ?? trayFrame.midX
+        let targetY = targetLocation?.y ?? trayFrame.midY
+
+        withAnimation(.smooth(duration: 0.2)) {
+            dragLocation = CGPoint(x: targetX, y: targetY)
+            dragOffset = .zero
+        }
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+            viewModel.returnPieceToTray(piece)
+
+            draggedPiece = nil
+            isReturning = false
+        }
     }
 }
 
