@@ -35,7 +35,7 @@ enum Difficulty: String, CaseIterable, Identifiable {
         case .hard: return 0.08...0.15
         case .master: return 0.05...0.12
         case .legend: return 0.03...0.08
-        case .god: return 0.00...0.05
+        case .god: return 0.01...0.05
         }
     }
     
