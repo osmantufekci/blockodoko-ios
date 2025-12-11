@@ -6,7 +6,7 @@
 //
 import UIKit
 
-class HapticManager {
+final class HapticManager {
     // Singleton instance: Her yerden HapticManager.shared.action() diye çağırmak için
     static let shared = HapticManager()
 

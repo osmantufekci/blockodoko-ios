@@ -1,7 +1,7 @@
 import Foundation
 import Combine
 
-class JokerManager: ObservableObject {
+final class JokerManager: ObservableObject {
     @Published var availableJokers: [any JokerProtocol] = []
     
     init(jokers: [any JokerProtocol]) {

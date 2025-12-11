@@ -1,6 +1,6 @@
 import Foundation
 
-class SeededRNG {
+final class SeededRNG {
     private var seed: UInt32 = 0
     
     init(seedString: String) {
