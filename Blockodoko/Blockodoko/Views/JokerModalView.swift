@@ -5,7 +5,8 @@ struct JokerModalView: View {
     @Binding var isPresented: Bool
     
     @State private var grid: [[Int]] = Array(repeating: Array(repeating: 0, count: 5), count: 5)
-    
+    @State var cost = 0
+
     var body: some View {
         ZStack {
             Color.black.opacity(0.8).edgesIgnoringSafeArea(.all)
@@ -30,7 +31,13 @@ struct JokerModalView: View {
                                     .frame(width: 40, height: 40)
                                     .border(Color.gray.opacity(0.3), width: 1)
                                     .onTapGesture {
-                                        grid[r][c] = grid[r][c] == 1 ? 0 : 1
+                                        if grid[r][c] == 1 {
+                                            grid[r][c] = 0
+                                            cost -= 100
+                                        } else {
+                                            grid[r][c] = 1
+                                            cost += 100
+                                        }
                                     }
                             }
                         }
@@ -45,8 +52,9 @@ struct JokerModalView: View {
                         isPresented = false
                     }
                     .foregroundColor(.gray)
-                    
-                    Button("Create (200💰)") {
+
+                    let title = cost == 0 ? "Create" : "Create (\(cost)💰)"
+                    Button(title) {
                         createJoker()
                     }
                     .padding(.horizontal, 20)
@@ -64,16 +72,11 @@ struct JokerModalView: View {
     }
     
     private func createJoker() {
-        // Validation: Must be connected and not empty
-        // JS: checks connectivity.
-        // Simplified Check: Not empty
         let hasBlock = grid.flatMap { $0 }.contains(1)
         guard hasBlock else { return }
         
-        // Connectivity check is better but skipping for MVP speed unless critical.
-        // User asked for "Logic korunacak". JS `checkConn` implements BFS.
         if !isConnected(grid) { return }
-        
+
         if viewModel.createJokerPiece(matrix: grid) {
             isPresented = false
         }
