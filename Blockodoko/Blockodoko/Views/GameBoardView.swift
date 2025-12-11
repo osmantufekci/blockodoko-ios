@@ -3,6 +3,7 @@ import SwiftUI
 struct GameBoardView: View {
     @ObservedObject var viewModel: GameViewModel
     @Binding var boardFrame: CGRect
+    let isLiftable = false
     var onLiftPiece: ((BlockPiece, CGPoint) -> Void)?
     var onDragChanged: ((CGPoint) -> Void)?
     var onDragEnded: ((CGPoint) -> Void)?
@@ -27,34 +28,35 @@ struct GameBoardView: View {
                     }
                 }
 
-                Color.white.opacity(0.001)
-                // DEĞİŞİKLİK BURADA: .gesture yerine .highPriorityGesture kullanıyoruz
-                    .highPriorityGesture(
-                        DragGesture(minimumDistance: 0, coordinateSpace: .global)
-                            .onChanged { value in
-                                // ... (Kodların aynısı) ...
-                                let globalLocation = value.location
-                                let frame = geo.frame(in: .global)
-                                let relX = value.location.x - frame.minX
-                                let relY = value.location.y - frame.minY
-                                let col = Int(relX / (cellSize + spacing))
-                                let row = Int(relY / (cellSize + spacing))
-
-                                if col >= 0 && col < viewModel.board.count &&
-                                    row >= 0 && row < viewModel.board.count {
-
-                                    if let liftedPiece = viewModel.liftPiece(at: col, y: row) {
-                                        HapticManager.shared.liftPiece()
-                                        onLiftPiece?(liftedPiece, globalLocation)
+                if isLiftable {
+                    Color.white.opacity(0.001)
+                        .highPriorityGesture(
+                            DragGesture(minimumDistance: 0, coordinateSpace: .global)
+                                .onChanged { value in
+                                    // ... (Kodların aynısı) ...
+                                    let globalLocation = value.location
+                                    let frame = geo.frame(in: .global)
+                                    let relX = value.location.x - frame.minX
+                                    let relY = value.location.y - frame.minY
+                                    let col = Int(relX / (cellSize + spacing))
+                                    let row = Int(relY / (cellSize + spacing))
+                                    
+                                    if col >= 0 && col < viewModel.board.count &&
+                                        row >= 0 && row < viewModel.board.count {
+                                        
+                                        if let liftedPiece = viewModel.liftPiece(at: col, y: row) {
+                                            HapticManager.shared.liftPiece()
+                                            onLiftPiece?(liftedPiece, globalLocation)
+                                        }
                                     }
+                                    onDragChanged?(globalLocation)
                                 }
-                                onDragChanged?(globalLocation)
-                            }
-                            .onEnded { value in
-                                // HighPriority olduğu için artık tepsi üzerinde de çalışır
-                                onDragEnded?(value.location)
-                            }
-                    )
+                                .onEnded { value in
+                                    // HighPriority olduğu için artık tepsi üzerinde de çalışır
+                                    onDragEnded?(value.location)
+                                }
+                        )
+                }
             }
             .onAppear {
                 DispatchQueue.main.async {
