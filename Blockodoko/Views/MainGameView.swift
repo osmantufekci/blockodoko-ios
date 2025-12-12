@@ -19,7 +19,7 @@ struct MainGameView: View {
             
             VStack(spacing: 12) {
                 HeaderView() 
-                    .environmentObject(viewModel)
+                    .environmentObject(navigation)
 
                 Spacer()
 
@@ -254,7 +254,15 @@ struct MainGameView: View {
 }
 
 #Preview {
-    MainGameView()
-        .environmentObject(GameViewModel())
-        .environmentObject(NavigationManager.shared)
+
+    @Previewable @StateObject var navigationManager: NavigationManager = .shared
+    NavigationStack(path: $navigationManager.path) {
+        MainGameView()
+            .environmentObject(GameViewModel())
+            .preferredColorScheme(.dark)
+            .navigationDestination(for: NavigationView<AnyView>.self) { destination in
+                destination
+            }
+    }
+    .environmentObject(navigationManager)
 }
