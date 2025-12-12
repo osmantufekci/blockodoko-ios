@@ -2,7 +2,7 @@ import Foundation
 import SwiftUI
 
 // MARK: - Diffculty
-enum Difficulty: String, CaseIterable, Identifiable {
+enum Difficulty: String, CaseIterable, Identifiable, Codable {
     case easy, medium, medHard = "med-hard", hard, master, legend, god
     
     var id: String { self.rawValue }
