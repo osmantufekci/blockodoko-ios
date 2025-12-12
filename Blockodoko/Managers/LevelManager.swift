@@ -46,6 +46,7 @@ class LevelManager: ObservableObject {
         }
     }
 
+    // MARK: ~ Admin Method
     func uploadStaticLevelsToFirebase() {
         let levelsToUpload = fallbackLevels
         

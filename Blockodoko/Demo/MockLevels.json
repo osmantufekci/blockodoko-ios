@@ -1,0 +1,16 @@
+[
+    {
+        "id": 1,
+        "difficulty": "easy",
+        "seed": "LEVEL_00_START",
+        "targetPieces": 14,
+        "title": "Level 1"
+    },
+    {
+        "id": 2,
+        "difficulty": "LEVEL_01_START",
+        "seed": "124",
+        "targetPieces": 13,
+        "title": "Level 2"
+    }
+]
