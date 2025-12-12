@@ -8,7 +8,7 @@ import Foundation
 import FirebaseFirestore
 import Combine
 
-class LevelManager: ObservableObject {
+final class LevelManager: ObservableObject {
     static let shared = LevelManager()
     private let db = Firestore.firestore()
     
@@ -18,9 +18,8 @@ class LevelManager: ObservableObject {
 
     private let fallbackLevels = LevelLibrary.allLevels
 
-    func fetchLevels() {
+    func fetchLevels(completed: @escaping () -> Void) {
         isLoading = true
-        
         db.collection("levels").order(by: "id").getDocuments { snapshot, error in
             DispatchQueue.main.async {
                 self.isLoading = false
@@ -29,19 +28,22 @@ class LevelManager: ObservableObject {
                     print("Error fetching levels: \(error.localizedDescription)")
                     self.errorMessage = error.localizedDescription
                     if self.levels.isEmpty { self.levels = self.fallbackLevels }
+                    completed()
                     return
                 }
                 
-                guard let documents = snapshot?.documents else {
+                guard let documents = snapshot?.documents, !documents.isEmpty else {
                     self.levels = self.fallbackLevels
+                    completed()
                     return
                 }
 
                 self.levels = documents.compactMap { doc -> LevelData? in
+                    completed()
                     return try? doc.data(as: LevelData.self)
                 }
                 
-                print("🔥 Firebase'den \(self.levels.count) level başarıyla yüklendi!")
+                print("🔥 Firebase'den \(self.levels.count) adet level başarıyla yüklendi!")
             }
         }
     }
