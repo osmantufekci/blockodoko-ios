@@ -1,9 +1,7 @@
 import SwiftUI
 
 struct MainGameView: View {
-    let difficulty: Difficulty
-    let seed: String?
-    @StateObject private var viewModel = GameViewModel()
+    @EnvironmentObject var viewModel: GameViewModel
 
     // Drag State
     @State private var draggedPiece: BlockPiece?
@@ -13,11 +11,6 @@ struct MainGameView: View {
     @State private var trayFrame: CGRect = .zero
     @State private var isReturning: Bool = false
     @State private var targetLocation: CGPoint? = nil
-
-    init(difficulty: Difficulty = .medHard, seed: String? = nil) {
-        self.difficulty = difficulty
-        self.seed = seed
-    }
 
     var body: some View {
         ZStack {
@@ -130,7 +123,7 @@ struct MainGameView: View {
                     levelNumber: viewModel.currentLevel,
                     gridSize: viewModel.board.count,
                     targetPieces: viewModel.tray.count,
-                    difficultyName: viewModel.difficulty.rawValue,
+                    difficultyName: viewModel.difficulty.displayName,
                     onStart: {
                         withAnimation {
                             viewModel.showLevelStartModal = false
@@ -264,5 +257,5 @@ struct MainGameView: View {
 }
 
 #Preview {
-    MainGameView(seed: "2T725OB1SU6")
+    MainGameView()
 }
