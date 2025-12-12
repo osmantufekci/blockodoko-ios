@@ -17,7 +17,7 @@ enum GameStatus: String, Identifiable {
 final class GameViewModel: ObservableObject, GameContext {
     // --- PUBLISHED STATE ---
     @Published var board: [[Cell]] = []
-    @Published var tray: [BlockPiece] = [] // Artık TÜM parçalar burada duracak
+    @Published var tray: [BlockPiece] = [] 
     @Published var currentLevel: Int = 1
     @Published var difficulty: Difficulty = .medHard
 
@@ -30,6 +30,7 @@ final class GameViewModel: ObservableObject, GameContext {
     @Published var showGameOverModal: Bool = false
     @Published var gameStatus: GameStatus = .ready
     @Published var coins: Int = 1000
+    @Published var showShop: Bool = false
     @Published var previewCells: Set<String> = []
     @Published var showJokerModal = false
 
@@ -40,6 +41,18 @@ final class GameViewModel: ObservableObject, GameContext {
     private let colors = ["c-0", "c-1", "c-2", "c-3", "c-4", "c-5"]
 
     init() {
+        LevelManager.shared.fetchLevels() { [self] in
+            loadLevel(currentLevel)
+        }
+
+        initCloud()
+        initStore()
+
+        NotificationCenter.default.addObserver(self, selector: #selector(handleCloudUpdate), name: .cloudDataUpdated, object: nil)
+    }
+
+
+    private func initCloud() {
         let cloudLevel = CloudStoreManager.shared.getLevel()
         let cloudCoins = CloudStoreManager.shared.getCoins()
 
@@ -53,10 +66,15 @@ final class GameViewModel: ObservableObject, GameContext {
             if self.currentLevel == 0 { self.currentLevel = 1 }
             if self.coins == 0 { self.coins = 1000 }
         }
+    }
 
-        NotificationCenter.default.addObserver(self, selector: #selector(handleCloudUpdate), name: .cloudDataUpdated, object: nil)
-
-        LevelManager.shared.fetchLevels()
+    private func initStore() {
+        StoreManager.shared.onCoinPurchase = { [weak self] amount in
+            DispatchQueue.main.async {
+                self?.addCoins(amount: amount)
+                print("💰 IAP Başarılı: \(amount) coin eklendi!")
+            }
+        }
     }
 
     @objc func handleCloudUpdate() {
