@@ -2,6 +2,7 @@ import SwiftUI
 
 struct MainGameView: View {
     @EnvironmentObject var viewModel: GameViewModel
+    @EnvironmentObject var navigation: NavigationManager
 
     // Drag State
     @State private var draggedPiece: BlockPiece?
@@ -17,8 +18,9 @@ struct MainGameView: View {
             Color.themeBackground.edgesIgnoringSafeArea(.all)
             
             VStack(spacing: 12) {
-                HeaderView(viewModel: viewModel)
-                
+                HeaderView() 
+                    .environmentObject(viewModel)
+
                 Spacer()
 
                 GameBoardView(
@@ -137,7 +139,7 @@ struct MainGameView: View {
                 GameOverView(
                     coins: viewModel.coins,
                     onRestart: {
-                        viewModel.loadLevel(self.viewModel.currentLevel)
+                        viewModel.loadLevel(viewModel.currentLevel)
                         viewModel.gameStatus = .ready
                         viewModel.showGameOverModal = false
                     },
@@ -163,11 +165,6 @@ struct MainGameView: View {
                 }
             }
         )
-        .onAppear {
-            if viewModel.board.isEmpty {
-                viewModel.loadLevel(viewModel.currentLevel)
-            }
-        }
     }
 
     private func updateGhost(location: CGPoint, piece: BlockPiece?) {
@@ -258,4 +255,6 @@ struct MainGameView: View {
 
 #Preview {
     MainGameView()
+        .environmentObject(GameViewModel())
+        .environmentObject(NavigationManager.shared)
 }
