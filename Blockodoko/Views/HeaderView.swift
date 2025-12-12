@@ -13,7 +13,18 @@ struct HeaderView: View {
                     .foregroundColor(Color(hex: "eee"))
                 
                 Spacer()
-                
+                Button(action: {
+                    viewModel.loadLevel(viewModel.currentLevel)
+                }) {
+                    VStack {
+                        Image(systemName: "arrow.trianglehead.counterclockwise")
+                            .font(.system(size: 20))
+                        Text("Reset")
+                            .font(.caption2)
+                    }
+                    .foregroundColor(Color.white)
+                    .padding(8)
+                }
                 HStack {
                     Text("💰")
                     Text("\(viewModel.coins)")
