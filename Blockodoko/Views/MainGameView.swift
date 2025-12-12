@@ -58,7 +58,6 @@ struct MainGameView: View {
                  
                 Spacer()
 
-                // Controls (Jokers)
                 HStack(spacing: 20) {
                     ForEach(viewModel.jokerManager.availableJokers, id: \.id) { joker in
                          Button(action: { 
@@ -77,6 +76,7 @@ struct MainGameView: View {
                         }
                     }
                 }
+                .padding(.horizontal, 8)
 
                 TrayView(
                     viewModel: viewModel,
@@ -142,17 +142,18 @@ struct MainGameView: View {
 
             if viewModel.showGameOverModal {
                 GameOverView(
+                    coins: viewModel.coins,
                     onRestart: {
                         viewModel.loadLevel(self.viewModel.currentLevel)
-                        viewModel.gameStatus = "Ready"
+                        viewModel.gameStatus = .ready
                         viewModel.showGameOverModal = false
                     },
                     onUndo: {
-                        viewModel.gameStatus = "Playing"
+                        viewModel.gameStatus = .playing
                         viewModel.showGameOverModal = false
 
                         withAnimation(Animation.easeIn.delay(0.25)) {
-                            if viewModel.coins >= JokerManager.standard.getJoker(id: .undo)?.cost ?? 50 {
+                            if viewModel.coins >= JokerManager.standard.getJoker(id: .undo)?.cost ?? 100 {
                                 viewModel.undoMove()
                             }
                         }
@@ -162,13 +163,10 @@ struct MainGameView: View {
         }
         .overlay(
             VStack {
-                if viewModel.gameStatus == "Victory!" {
-                    Text("VICTORY!")
-                        .font(.largeTitle)
-                        .bold()
-                        .padding()
-                        .background(Color.yellow)
-                        .cornerRadius(10)
+                if viewModel.gameStatus == .victory {
+                    ConfettiView()
+                        .zIndex(299)
+                        .allowsHitTesting(false)
                 }
             }
         )
@@ -244,7 +242,6 @@ struct MainGameView: View {
     }
 
     private func animateReturnToTray(piece: BlockPiece) {
-        print(#function)
         HapticManager.shared.error()
 
         isReturning = true
