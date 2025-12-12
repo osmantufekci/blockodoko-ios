@@ -20,12 +20,12 @@ struct BlockodokoApp: App {
             NavigationStack(path: $navigationManager.path) {
                 MainGameView()
                     .environmentObject(viewModel)
-                    .environmentObject(navigationManager)
                     .preferredColorScheme(.dark)
                     .navigationDestination(for: NavigationView<AnyView>.self) { destination in
                         destination
                     }
             }
+            .environmentObject(navigationManager)
         }
     }
 }
