@@ -55,6 +55,8 @@ final class GameViewModel: ObservableObject, GameContext {
         }
 
         NotificationCenter.default.addObserver(self, selector: #selector(handleCloudUpdate), name: .cloudDataUpdated, object: nil)
+
+        LevelManager.shared.fetchLevels()
     }
 
     @objc func handleCloudUpdate() {
@@ -82,44 +84,38 @@ final class GameViewModel: ObservableObject, GameContext {
     // MARK: - Level Loading Logic
 
     func loadLevel(_ levelNumber: Int) {
-        guard let data = LevelLibrary.getLevel(number: levelNumber) else {
-            print("Level not found, restarting logic or showing end game.")
+        guard let data = LevelManager.shared.getLevel(number: levelNumber) else {
+            print("Level data not ready yet for level \(levelNumber)")
             return
         }
 
         self.currentLevel = levelNumber
+
         self.difficulty = data.difficulty
+
         self.currentGridSize = data.difficulty.gridSize
+
         self.piecesPlacedCount = 0
-        self.gameStatus = "Playing"
+        self.gameStatus = .playing
 
         self.rng = SeededRNG(seedString: data.seed)
 
         generateLevelInternal(difficulty: data.difficulty)
     }
 
-    // Olası bir hamle kaldı mı diye kontrol eder
     func checkGameOver() {
-        // Eğer tahta dolduysa zaten place fonksiyonunda yakalanır ama yine de bakalım
         if checkWinCondition() { return }
 
-        // Tepsi boşsa ve tahta dolmadıysa -> YANLIŞ YERLEŞTİRME (Stuck)
-        // Bu durumda Undo yapılması veya Restart edilmesi gerekir.
         if tray.isEmpty {
-            // Tahta dolmadı ama parça bitti. Demek ki Joker kullanmıştık veya yanlış yaptık.
-            // Ama paran varsa hala Joker ile 1x1 üretebilirsin.
             if coins >= jokerManager.getJoker(id: .piece)?.cost ?? 0 {
                 gameStatus = .userPowerup
                 return
             }
 
-            print("Game Over: Board not full and no pieces left!")
             triggerGameOver()
             return
         }
 
-        // --- NORMAL SIKIŞMA KONTROLÜ ---
-        // Mevcut parçalardan EN AZ BİRİ bir yere sığıyor mu?
         for piece in tray {
             for y in 0..<currentGridSize {
                 for x in 0..<currentGridSize {
@@ -130,7 +126,6 @@ final class GameViewModel: ObservableObject, GameContext {
             }
         }
 
-        // Parça sığmıyor... Peki Joker parası var mı?
         if coins >= 200 {
             gameStatus = .userPowerup
             return
@@ -147,20 +142,15 @@ final class GameViewModel: ObservableObject, GameContext {
             showGameOverModal = true
             HapticManager.shared.gameOver()
         }
-        // Burada bir "Yandın" modalı açabilirsin
-        // showGameOverModal = true
     }
 
     func liftPiece(at x: Int, y: Int) -> BlockPiece? {
         let cell = board[y][x]
 
-        // Boşsa veya kilitliyse (engel) işlem yapma
         if !cell.isFilled || cell.isLocked { return nil }
 
-        // Parçanın ID'sini al
         guard let pID = cell.pieceID else { return nil }
 
-        // 1. Parçanın tahtadaki sınırlarını ve şeklini bul
         var minX = Int.max, maxX = Int.min
         var minY = Int.max, maxY = Int.min
         var cellsToClear: [(x: Int, y: Int)] = []
@@ -177,23 +167,19 @@ final class GameViewModel: ObservableObject, GameContext {
             }
         }
 
-        // 2. Orijinal Matrisi Yeniden Oluştur (Reconstruct)
         let width = maxX - minX + 1
         let height = maxY - minY + 1
         var matrix = Array(repeating: Array(repeating: 0, count: width), count: height)
 
         for cellCoord in cellsToClear {
             matrix[cellCoord.y - minY][cellCoord.x - minX] = 1
-            // Tahtayı temizle
             board[cellCoord.y][cellCoord.x].isFilled = false
             board[cellCoord.y][cellCoord.x].pieceID = nil
             board[cellCoord.y][cellCoord.x].color = "c-0"
         }
 
-        // 3. İlerlemeyi geri al
         piecesPlacedCount -= 1
 
-        // 4. Parçayı oluştur ve döndür (Rengi koruyoruz)
         return BlockPiece(
             id: pID,
             matrix: matrix,
@@ -240,7 +226,6 @@ final class GameViewModel: ObservableObject, GameContext {
         self.piecesPlacedCount = state.piecesPlacedCount
         self.gameStatus = .playing
 
-        // Başarılı titreşim
         let generator = UIImpactFeedbackGenerator(style: .medium)
         generator.impactOccurred()
     }
@@ -257,12 +242,10 @@ final class GameViewModel: ObservableObject, GameContext {
     private func generateLevelInternal(difficulty: Difficulty) {
         guard let rng = self.rng else { return }
 
-        // 1. Board Sıfırla
         var newBoard = (0..<currentGridSize).map { y in
             (0..<currentGridSize).map { x in Cell(x: x, y: y) }
         }
 
-        // 2. Engel (Prefill) Yerleştirme
         let totalCells = Double(currentGridSize * currentGridSize)
         let rates = difficulty.prefillRange
         let prefillFactor = rng.next() * (rates.upperBound - rates.lowerBound) + rates.lowerBound
@@ -283,12 +266,10 @@ final class GameViewModel: ObservableObject, GameContext {
         }
         self.board = newBoard
 
-        // 3. Parça Üretimi (Virtual Grid Solution)
         var virtualGrid = newBoard.map { row in row.map { $0.isFilled ? 0 : 1 } }
         var generatedPieces: [BlockPiece] = []
         var failSafe = 0
 
-        // Kalan boşlukları dolduracak kadar parça üret
         while remainingEmpty > 0 && failSafe < 3000 {
             failSafe += 1
             let sx = Int(rng.next() * Double(currentGridSize))
@@ -314,8 +295,6 @@ final class GameViewModel: ObservableObject, GameContext {
             }
         }
 
-        // 4. Parçaları Tepsiye Ata
-        // DÜZELTME: Queue yok, refill yok. Hepsi direkt tepsiye.
         self.tray = generatedPieces
         self.totalPiecesTarget = generatedPieces.count
     }
