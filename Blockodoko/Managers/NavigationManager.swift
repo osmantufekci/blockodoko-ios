@@ -20,7 +20,9 @@ struct BackButton: View {
     
     var body: some View {
         Button(action: action) {
-            Image("chevron.left")
+            Image(systemName: "chevron.left")
+                .fontWeight(.medium)
+                .foregroundStyle(.white)
         }
     }
 }
