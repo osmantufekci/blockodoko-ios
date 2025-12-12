@@ -10,11 +10,13 @@
 		86BA7CD62EEB04C5003C48B3 /* FirebaseAnalytics in Frameworks */ = {isa = PBXBuildFile; productRef = 86BA7CD52EEB04C5003C48B3 /* FirebaseAnalytics */; };
 		86BA7CD82EEB04C5003C48B3 /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = 86BA7CD72EEB04C5003C48B3 /* FirebaseAuth */; };
 		86BA7CDA2EEB04C5003C48B3 /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = 86BA7CD92EEB04C5003C48B3 /* FirebaseFirestore */; };
+		86BA7CEF2EEC40A1003C48B3 /* Blockodoko: Block Puzzle Game.storekit in Resources */ = {isa = PBXBuildFile; fileRef = 86BA7CEE2EEC40A1003C48B3 /* Blockodoko: Block Puzzle Game.storekit */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		86BA7B142EE995BA003C48B3 /* Blockodoko.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Blockodoko.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		86BA7B562EE9ADD7003C48B3 /* Blockodoko.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = Blockodoko.xcodeproj; sourceTree = "<group>"; };
+		86BA7CEE2EEC40A1003C48B3 /* Blockodoko: Block Puzzle Game.storekit */ = {isa = PBXFileReference; lastKnownFileType = text; name = "Blockodoko: Block Puzzle Game.storekit"; path = "Blockodoko/Demo/Blockodoko: Block Puzzle Game.storekit"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -42,6 +44,7 @@
 		86BA7B0B2EE995BA003C48B3 = {
 			isa = PBXGroup;
 			children = (
+				86BA7CEE2EEC40A1003C48B3 /* Blockodoko: Block Puzzle Game.storekit */,
 				86BA7B162EE995BA003C48B3 /* Blockodoko */,
 				86BA7B152EE995BA003C48B3 /* Products */,
 			);
@@ -138,6 +141,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				86BA7CEF2EEC40A1003C48B3 /* Blockodoko: Block Puzzle Game.storekit in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
