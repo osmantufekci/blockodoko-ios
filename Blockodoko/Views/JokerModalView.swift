@@ -77,7 +77,7 @@ struct JokerModalView: View {
         
         if !isConnected(grid) { return }
 
-        if viewModel.createJokerPiece(matrix: grid) {
+        if viewModel.createJokerPiece(matrix: grid, cost: cost) {
             isPresented = false
         }
     }

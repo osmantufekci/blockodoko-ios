@@ -206,7 +206,7 @@ final class GameViewModel: ObservableObject, GameContext {
     func undoMove() {
         guard let lastState = moveHistory.popLast() else { return }
 
-        let cost = 50
+        let cost = JokerManager.standard.availableJokers.first(where: {$0 is UndoJoker})?.cost ?? 100
         if spendCoins(amount: cost) {
             applySnapshot(lastState)
         } else {
@@ -535,14 +535,14 @@ final class GameViewModel: ObservableObject, GameContext {
 
     // MARK: - Helpers
 
-    func createJokerPiece(matrix: [[Int]]) -> Bool {
+    func createJokerPiece(matrix: [[Int]], cost: Int) -> Bool {
         // Önce matrisi kırp (Gereksiz boşlukları at)
         let trimmedMatrix = trimMatrix(matrix)
 
         // Eğer boş bir şekil çizildiyse işlem yapma (veya uyarı ver)
         if trimmedMatrix.isEmpty { return false }
 
-        if spendCoins(amount: 200) {
+        if spendCoins(amount: cost) {
             // Kırpılmış matris ile parça oluştur
             let piece = BlockPiece(
                 matrix: trimmedMatrix,
