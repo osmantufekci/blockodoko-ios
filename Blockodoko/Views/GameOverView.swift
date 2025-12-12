@@ -10,12 +10,17 @@ import SwiftUI
 
 struct GameOverView: View {
     // Aksiyonlar
+    var coins: Int = 0
     let onRestart: () -> Void
     let onUndo: () -> Void // Oyuncuya son bir şans vermek için
-    
+
     // Animasyon State
     @State private var isAnimating = false
-    
+
+    var eligibleToUsePowerUp: Bool {
+        coins > JokerManager.standard.availableJokers.sorted(by: {$0.cost < $1.cost}).first?.cost ?? 0
+    }
+
     var body: some View {
         ZStack {
             // 1. Arka Plan: Koyu ve Bulanık (Ümitsizlik havası ama şık)
@@ -43,7 +48,7 @@ struct GameOverView: View {
                         .foregroundColor(.white)
                         .shadow(color: .black.opacity(0.5), radius: 5, x: 0, y: 2)
                     
-                    Text("Don't give up! Try again or use a power-up.")
+                    Text("Don't give up! Try again \(eligibleToUsePowerUp ? "or use a power-up" : "")")
                         .font(.subheadline)
                         .foregroundColor(.white.opacity(0.7))
                         .multilineTextAlignment(.center)
@@ -53,31 +58,32 @@ struct GameOverView: View {
                 // Buton Grubu
                 VStack(spacing: 15) {
                     
-                    // 1. Seçenek: İkinci Şans (Undo) - Önerilen
-                    Button(action: {
-                        HapticManager.shared.buttonTap()
-                        onUndo()
-                    }) {
-                        HStack {
-                            Image(systemName: "arrow.uturn.backward")
-                            Text("UNDO LAST MOVE")
+                    if eligibleToUsePowerUp {
+                        Button(action: {
+                            HapticManager.shared.buttonTap()
+                            onUndo()
+                        }) {
+                            HStack {
+                                Image(systemName: "arrow.uturn.backward")
+                                Text("UNDO LAST MOVE")
+                            }
+                            .font(.headline)
+                            .fontWeight(.bold)
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 60)
+                            .background(
+                                LinearGradient(colors: [Color.blue, Color.purple], startPoint: .leading, endPoint: .trailing)
+                            )
+                            .cornerRadius(16)
+                            .shadow(color: Color.blue.opacity(0.4), radius: 10, x: 0, y: 5)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 16)
+                                    .stroke(Color.white.opacity(0.3), lineWidth: 1)
+                            )
                         }
-                        .font(.headline)
-                        .fontWeight(.bold)
-                        .foregroundColor(.white)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 60)
-                        .background(
-                            LinearGradient(colors: [Color.blue, Color.purple], startPoint: .leading, endPoint: .trailing)
-                        )
-                        .cornerRadius(16)
-                        .shadow(color: Color.blue.opacity(0.4), radius: 10, x: 0, y: 5)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 16)
-                                .stroke(Color.white.opacity(0.3), lineWidth: 1)
-                        )
                     }
-                    
+
                     // 2. Seçenek: Yeniden Başla (Restart)
                     Button(action: {
                         HapticManager.shared.buttonTap()
