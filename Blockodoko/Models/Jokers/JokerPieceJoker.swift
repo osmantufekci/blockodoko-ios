@@ -27,7 +27,7 @@ struct JokerPieceJoker: JokerProtocol {
         // OR the modal is just a UI to *select* the shape, and then we call a "create" function that charges?
         
         // Let's rely on the VM showing the modal.
-        context.showJokerModal = true
+        context.showJokerModal = context.coins >= cost
         return true
     }
 }
