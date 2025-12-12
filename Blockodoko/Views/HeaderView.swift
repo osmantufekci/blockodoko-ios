@@ -1,8 +1,9 @@
 import SwiftUI
 
 struct HeaderView: View {
-    @ObservedObject var viewModel: GameViewModel
-    
+    @EnvironmentObject var viewModel: GameViewModel
+    @EnvironmentObject var navigation: NavigationManager
+
     var body: some View {
         VStack {
             // Title & Coins
@@ -14,7 +15,7 @@ struct HeaderView: View {
                 
                 Spacer()
                 Button(action: {
-                    viewModel.loadLevel(viewModel.currentLevel)
+                    viewModel.showLevelStartModal = true
                 }) {
                     VStack {
                         Image(systemName: "arrow.trianglehead.counterclockwise")
@@ -25,17 +26,25 @@ struct HeaderView: View {
                     .foregroundColor(Color.white)
                     .padding(8)
                 }
-                HStack {
-                    Text("💰")
-                    Text("\(viewModel.coins)")
-                        .font(.system(size: 14, weight: .bold))
+
+                Button(action: {
+                    navigation.navigate(
+                        ShopView()
+                            .environmentObject(navigation)
+                    )
+                }) {
+                    HStack {
+                        Text("💰")
+                        Text("\(viewModel.coins)")
+                            .font(.system(size: 14, weight: .bold))
+                    }
+                    .padding(.horizontal, 15)
+                    .padding(.vertical, 5)
+                    .background(Color(hex: "FFD740"))
+                    .foregroundColor(.black)
+                    .cornerRadius(20)
+                    .shadow(color: Color(hex: "FFD740").opacity(0.4), radius: 10)
                 }
-                .padding(.horizontal, 15)
-                .padding(.vertical, 5)
-                .background(Color(hex: "FFD740"))
-                .foregroundColor(.black)
-                .cornerRadius(20)
-                .shadow(color: Color(hex: "FFD740").opacity(0.4), radius: 10)
             }
             .padding(.bottom, 10)
             
@@ -72,5 +81,9 @@ struct HeaderView: View {
 }
 
 #Preview {
-    HeaderView(viewModel: .init())
+    NavigationView {
+        HeaderView(viewModel: .init())
+            .environmentObject(NavigationManager.shared)
+            .environmentObject(GameViewModel())
+    }
 }
