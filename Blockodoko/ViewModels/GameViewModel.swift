@@ -7,6 +7,12 @@
 import SwiftUI
 import Combine
 
+enum GameStatus: String, Identifiable {
+    case victory, ready, playing, gameOver, userPowerup
+
+    var id: String { rawValue }
+}
+
 // MARK: - Game View Model
 final class GameViewModel: ObservableObject, GameContext {
     // --- PUBLISHED STATE ---
@@ -22,7 +28,7 @@ final class GameViewModel: ObservableObject, GameContext {
     // UI State
     @Published var showLevelStartModal: Bool = true
     @Published var showGameOverModal: Bool = false
-    @Published var gameStatus: String = "Ready"
+    @Published var gameStatus: GameStatus = .ready
     @Published var coins: Int = 1000
     @Published var previewCells: Set<String> = []
     @Published var showJokerModal = false
@@ -103,7 +109,7 @@ final class GameViewModel: ObservableObject, GameContext {
             // Tahta dolmadı ama parça bitti. Demek ki Joker kullanmıştık veya yanlış yaptık.
             // Ama paran varsa hala Joker ile 1x1 üretebilirsin.
             if coins >= jokerManager.getJoker(id: .piece)?.cost ?? 0 {
-                gameStatus = "Use Joker!"
+                gameStatus = .userPowerup
                 return
             }
 
@@ -126,7 +132,7 @@ final class GameViewModel: ObservableObject, GameContext {
 
         // Parça sığmıyor... Peki Joker parası var mı?
         if coins >= 200 {
-            gameStatus = "Use Joker!"
+            gameStatus = .userPowerup
             return
         }
 
@@ -136,7 +142,7 @@ final class GameViewModel: ObservableObject, GameContext {
 
     func triggerGameOver() {
         print("Game Over: No moves left!")
-        gameStatus = "Game Over"
+        gameStatus = .gameOver
         withAnimation(Animation.easeIn.delay(0.25)) {
             showGameOverModal = true
             HapticManager.shared.gameOver()
@@ -232,7 +238,7 @@ final class GameViewModel: ObservableObject, GameContext {
         self.board = state.board
         self.tray = state.tray
         self.piecesPlacedCount = state.piecesPlacedCount
-        self.gameStatus = "Playing" // Game Over ise oyunu tekrar aktif et
+        self.gameStatus = .playing
 
         // Başarılı titreşim
         let generator = UIImpactFeedbackGenerator(style: .medium)
@@ -376,7 +382,7 @@ final class GameViewModel: ObservableObject, GameContext {
     }
 
     func completeLevel() {
-        gameStatus = "Victory!"
+        gameStatus = .victory
         let reward = difficulty.levelClearReward
         addCoins(amount: reward)
 
@@ -390,7 +396,7 @@ final class GameViewModel: ObservableObject, GameContext {
         DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
             self.loadLevel(self.currentLevel)
             self.showLevelStartModal = true
-            self.gameStatus = "Ready"
+            self.gameStatus = .ready
         }
     }
 
@@ -486,18 +492,13 @@ final class GameViewModel: ObservableObject, GameContext {
     var jokerManager: JokerManager = .standard
     
     func useJoker(id: JokerType) {
-//        if coins <= 100 { self.coins = 950 }
         guard let joker = jokerManager.getJoker(id: id) else { return }
 
         HapticManager.shared.useJoker()
-        // Execute
-        // We pass 'self' as context. 
-        // Since execute returns Bool, we can handle feedback here if needed.
         withAnimation(Animation.easeIn.delay(0.05)) {
             let success = joker.execute(context: self)
             if !success {
-                let generator = UINotificationFeedbackGenerator()
-                generator.notificationOccurred(.error)
+                HapticManager.shared.error()
             }
         }
     }
