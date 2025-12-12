@@ -18,17 +18,11 @@ struct TrayView: View {
                         // Performans için ZStack yerine overlay/background veya doğrudan View
                         PieceView(piece: piece, cellSize: pieceCellSize)
                             .scaleEffect(0.8)
-                        // Eğer bu parça sürükleniyorsa yerinde sadece boşluk kalsın (Opacity 0)
                             .opacity(draggedPiece?.id == piece.id ? 0 : 1)
-
-                        // Parça boyutunu GeometryReader OLMADAN hesapla
                             .frame(
                                 width: CGFloat(piece.matrix[0].count) * pieceCellSize + 10,
                                 height: CGFloat(piece.matrix.count) * pieceCellSize + 10
                             )
-
-                        // Gesture optimizasyonu: HighPriority (Scroll'u engellemek için)
-                        // MinimumDistance 0 (Anında tepki için)
                             .highPriorityGesture(
                                 DragGesture(minimumDistance: 0, coordinateSpace: .global)
                                     .onChanged { value in
