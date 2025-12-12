@@ -21,7 +21,7 @@ enum Difficulty: String, CaseIterable, Identifiable, Codable {
     
     var displayName: String {
         switch self {
-        case .medHard: return "Med-Hard"
+        case .medHard: return "Intermediate"
         case .god: return "????"
         default: return rawValue.capitalized
         }
