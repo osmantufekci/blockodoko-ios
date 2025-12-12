@@ -13,12 +13,19 @@ class AppDelegate: NSObject, UIApplicationDelegate {
 struct BlockodokoApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) var delegate
     @StateObject var viewModel = GameViewModel()
+    @StateObject var navigationManager: NavigationManager = .shared
 
     var body: some Scene {
         WindowGroup {
-            MainGameView()
-                .environmentObject(viewModel)
-                .preferredColorScheme(.dark) // Force dark mode as per design
+            NavigationStack(path: $navigationManager.path) {
+                MainGameView()
+                    .environmentObject(viewModel)
+                    .environmentObject(navigationManager)
+                    .preferredColorScheme(.dark)
+                    .navigationDestination(for: NavigationView<AnyView>.self) { destination in
+                        destination
+                    }
+            }
         }
     }
 }
