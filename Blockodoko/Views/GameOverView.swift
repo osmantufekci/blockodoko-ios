@@ -9,10 +9,9 @@
 import SwiftUI
 
 struct GameOverView: View {
-    // Aksiyonlar
     var coins: Int = 0
     let onRestart: () -> Void
-    let onUndo: () -> Void // Oyuncuya son bir şans vermek için
+    let onUndo: () -> Void
 
     // Animasyon State
     @State private var isAnimating = false
@@ -64,8 +63,8 @@ struct GameOverView: View {
                             onUndo()
                         }) {
                             HStack {
-                                Image(systemName: "arrow.uturn.backward")
-                                Text("UNDO LAST MOVE")
+                                Image(systemName: "bolt.heart")
+                                Text("Use Power-up")
                             }
                             .font(.headline)
                             .fontWeight(.bold)

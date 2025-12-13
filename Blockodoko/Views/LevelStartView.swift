@@ -140,13 +140,14 @@ struct InfoBadge: View {
 // Önizleme
 #Preview {
     ZStack {
-        Color.blue.ignoresSafeArea() // Arkada oyun varmış gibi
+        Color.blue.ignoresSafeArea()
         LevelStartView(
-            levelNumber: 5,
+            levelNumber: 2,
             gridSize: 8,
-            targetPieces: 25,
-            difficultyName: "Med-Hard",
+            targetPieces: 12,
+            difficultyName: "Intermediate",
             onStart: {}
         )
+        .environmentObject(GameViewModel())
     }
 }

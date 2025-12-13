@@ -10,6 +10,7 @@ import StoreKit
 struct ShopView: View {
     @StateObject var storeManager = StoreManager.shared
     @EnvironmentObject var navigation: NavigationManager
+    @EnvironmentObject var adsManager: AdsManager
     @Environment(\.presentationMode) var presentationMode
     
     var body: some View {
@@ -31,6 +32,51 @@ struct ShopView: View {
                 } else {
                     ScrollView {
                         VStack(spacing: 15) {
+                            if !adsManager.isAdsRemoved && adsManager.isRewardedAdLoaded {
+                                Button(action: {
+                                    adsManager.showRewardedAd { rewardAmount in
+
+                                        StoreManager.shared.onCoinPurchase?(rewardAmount)
+
+                                        HapticManager.shared.error()
+                                        print("💰 \(rewardAmount) Coin kazanıldı!")
+                                    }
+                                }) {
+                                    HStack {
+                                        Image(systemName: "play.tv.fill") // TV İkonu
+                                            .font(.largeTitle)
+                                            .foregroundColor(.white)
+                                            .padding()
+                                            .background(Color.blue) // Mavi zemin
+                                            .cornerRadius(12)
+
+                                        VStack(alignment: .leading, spacing: 4) {
+                                            Text("FREE COINS")
+                                                .font(.headline)
+                                                .fontWeight(.bold)
+                                                .foregroundColor(.white)
+
+                                            Text("Watch video, get +100 Coins")
+                                                .font(.caption)
+                                                .foregroundColor(.green)
+                                        }
+
+                                        Spacer()
+
+                                        Image(systemName: "chevron.right")
+                                            .foregroundColor(.gray)
+                                    }
+                                    .padding()
+                                    .background(Color.white.opacity(0.1)) // Hafif transparan kart
+                                    .cornerRadius(16)
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 16)
+                                            .stroke(Color.white.opacity(0.2), lineWidth: 1)
+                                    )
+                                }
+                                .padding(.bottom, 10)
+                            }
+
                             ForEach(storeManager.products) { product in
                                 ProductRow(product: product) {
                                     Task {
@@ -102,6 +148,7 @@ struct ProductRow: View {
     NavigationStack {
         NavigationView {
             ShopView()
+                .environmentObject(AdsManager.shared)
         }
     }
 }

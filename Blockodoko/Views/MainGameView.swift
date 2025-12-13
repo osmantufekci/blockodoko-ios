@@ -3,6 +3,7 @@ import SwiftUI
 struct MainGameView: View {
     @EnvironmentObject var viewModel: GameViewModel
     @EnvironmentObject var navigation: NavigationManager
+    @EnvironmentObject var adsManager: AdsManager
 
     // Drag State
     @State private var draggedPiece: BlockPiece?
@@ -99,6 +100,7 @@ struct MainGameView: View {
                     placed: viewModel.totalPiecesTarget - viewModel.tray.count,
                     total: viewModel.totalPiecesTarget
                 )
+                .environmentObject(adsManager)
                 .padding(.bottom, 10)
             }
             .blur(radius: (draggedPiece != nil || viewModel.showLevelStartModal) ? 0.1 : 0)
@@ -113,7 +115,6 @@ struct MainGameView: View {
                     .animation(.spring(), value: isReturning)
             }
 
-            // Modals
             if viewModel.showJokerModal {
                 JokerModalView(viewModel: viewModel, isPresented: $viewModel.showJokerModal)
                     .zIndex(200)
@@ -127,12 +128,24 @@ struct MainGameView: View {
                     targetPieces: viewModel.tray.count,
                     difficultyName: viewModel.difficulty.displayName,
                     onStart: {
-                        withAnimation {
+                        withAnimation(.spring(duration: 0.2)) {
                             viewModel.showLevelStartModal = false
+                            viewModel.loadLevel(viewModel.currentLevel)
                         }
                     }
                 )
+                .environmentObject(viewModel)
                 .zIndex(100)
+            }
+
+            if viewModel.showNextLevelModal {
+                let reward = LevelManager.shared.getRewardData(number: viewModel.currentLevel) ?? 100
+                let _ = print(reward)
+                LevelCompleteView(baseReward: reward, onNextLevel: {
+                    viewModel.showLevelStartModal = true
+                    viewModel.showNextLevelModal = false
+                })
+                .environmentObject(viewModel)
             }
 
             if viewModel.showGameOverModal {
@@ -146,14 +159,16 @@ struct MainGameView: View {
                     onUndo: {
                         viewModel.gameStatus = .playing
                         viewModel.showGameOverModal = false
-
-                        withAnimation(Animation.easeIn.delay(0.25)) {
-                            if viewModel.coins >= JokerManager.standard.getJoker(id: .undo)?.cost ?? 100 {
-                                viewModel.undoMove()
+                    }
+                ).onAppear {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+                        if viewModel.currentLevel % ([4].randomElement() ?? 3) == 0 {
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                                adsManager.showInterstitialAd()
                             }
                         }
                     }
-                )
+                }
             }
         }
         .overlay(
@@ -259,6 +274,7 @@ struct MainGameView: View {
     NavigationStack(path: $navigationManager.path) {
         MainGameView()
             .environmentObject(GameViewModel())
+            .environmentObject(AdsManager.shared)
             .preferredColorScheme(.dark)
             .navigationDestination(for: NavigationView<AnyView>.self) { destination in
                 destination
