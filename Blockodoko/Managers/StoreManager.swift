@@ -111,17 +111,13 @@ class StoreManager: ObservableObject {
             // Coin Paketleri
             let coinAmount: Int
             coinAmount = ProductID(transaction.productID)?.amount ?? 0
-            
-            // GameViewModel'e coin eklemesini söyle
+
             onCoinPurchase?(coinAmount)
-            
-            // Haptic & Sound (Opsiyonel)
-            HapticManager.shared.useJoker() // Güçlü titreşim
+
+            HapticManager.shared.useJoker()
             
         } else if transaction.productType == .nonConsumable {
-            // Remove Ads
             purchasedProductIDs.insert(transaction.productID)
-            // UserDefaults'a kaydet (Reklam sdk'sı buradan okur)
             UserDefaults.standard.set(true, forKey: "isAdsRemoved")
         }
     }
