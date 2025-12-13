@@ -35,6 +35,12 @@ final class HapticManager {
         generator.notificationOccurred(.error)
     }
 
+    func success() {
+        let generator = UINotificationFeedbackGenerator()
+        generator.prepare()
+        generator.notificationOccurred(.success)
+    }
+
     // MARK: - Özel Durumlar (Game Events)
 
     // Bölüm geçince (Uzun ve yumuşak bir zafer titreşimi)
