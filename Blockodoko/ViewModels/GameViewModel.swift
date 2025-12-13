@@ -26,6 +26,7 @@ final class GameViewModel: ObservableObject, GameContext {
     @Published var piecesPlacedCount: Int = 0
 
     // UI State
+    @Published var showNextLevelModal: Bool = false
     @Published var showLevelStartModal: Bool = true
     @Published var showGameOverModal: Bool = false
     @Published var gameStatus: GameStatus = .ready
@@ -72,7 +73,7 @@ final class GameViewModel: ObservableObject, GameContext {
         StoreManager.shared.onCoinPurchase = { [weak self] amount in
             DispatchQueue.main.async {
                 self?.addCoins(amount: amount)
-                print("💰 IAP Başarılı: \(amount) coin eklendi!")
+                print("💰 addCoins başarılı: \(amount) coin eklendi!")
             }
         }
     }
@@ -142,11 +143,6 @@ final class GameViewModel: ObservableObject, GameContext {
                     }
                 }
             }
-        }
-
-        if coins >= 200 {
-            gameStatus = .userPowerup
-            return
         }
 
         print("Game Over: No moves left!")
@@ -383,16 +379,20 @@ final class GameViewModel: ObservableObject, GameContext {
         let reward = difficulty.levelClearReward
         addCoins(amount: reward)
 
-        // Level kaydet
         if currentLevel < LevelLibrary.totalLevels {
             saveProgress()
             currentLevel += 1
         }
 
-        // Modal aç
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+        if currentLevel % ([4,3].randomElement() ?? 3) == 0 {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                AdsManager.shared.showInterstitialAd()
+            }
+        }
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
             self.loadLevel(self.currentLevel)
-            self.showLevelStartModal = true
+            self.showNextLevelModal = true
             self.gameStatus = .ready
         }
     }
@@ -401,7 +401,6 @@ final class GameViewModel: ObservableObject, GameContext {
         if currentLevel < LevelLibrary.totalLevels {
             loadLevel(currentLevel + 1)
         } else {
-            // Oyun bitti, başa dön veya tebrik et
             loadLevel(1)
         }
     }
@@ -469,6 +468,7 @@ final class GameViewModel: ObservableObject, GameContext {
 
     func addCoins(amount: Int) {
         coins += amount
+        print(amount, "coins added", "current coins:", coins)
         saveProgress()
     }
 
