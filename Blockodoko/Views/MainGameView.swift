@@ -155,20 +155,13 @@ struct MainGameView: View {
                         viewModel.loadLevel(viewModel.currentLevel)
                         viewModel.gameStatus = .ready
                         viewModel.showGameOverModal = false
+                        viewModel.showLevelStartModal = true
                     },
                     onUndo: {
                         viewModel.gameStatus = .playing
                         viewModel.showGameOverModal = false
                     }
-                ).onAppear {
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
-                        if viewModel.currentLevel % ([4].randomElement() ?? 3) == 0 {
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                                adsManager.showInterstitialAd()
-                            }
-                        }
-                    }
-                }
+                )
             }
         }
         .overlay(
@@ -269,7 +262,6 @@ struct MainGameView: View {
 }
 
 #Preview {
-
     @Previewable @StateObject var navigationManager: NavigationManager = .shared
     NavigationStack(path: $navigationManager.path) {
         MainGameView()
