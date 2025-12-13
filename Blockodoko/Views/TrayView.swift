@@ -8,39 +8,39 @@ struct TrayView: View {
     @Binding var trayFrame: CGRect
 
     // Sabit hücre boyutu (Hesaplamalarda kullanmak için)
-    private let pieceCellSize: CGFloat = 15
+    private let pieceCellSize: CGFloat = 20
 
     var body: some View {
         GeometryReader { geo in
-            ScrollView(.horizontal, showsIndicators: false) { // ScrollIndicator kapalı daha şık
+            ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 20) {
                     ForEach(viewModel.tray) { piece in
-                        // Performans için ZStack yerine overlay/background veya doğrudan View
-                        PieceView(piece: piece, cellSize: pieceCellSize)
-                            .scaleEffect(0.8)
-                            .opacity(draggedPiece?.id == piece.id ? 0 : 1)
-                            .frame(
-                                width: CGFloat(piece.matrix[0].count) * pieceCellSize + 10,
-                                height: CGFloat(piece.matrix.count) * pieceCellSize + 10
-                            )
-                            .highPriorityGesture(
-                                DragGesture(minimumDistance: 0, coordinateSpace: .global)
-                                    .onChanged { value in
-                                        // Sürükleme başladığında (ilk tetiklenme)
-                                        if draggedPiece == nil {
-                                            HapticManager.shared.liftPiece()
-                                            draggedPiece = piece
-                                            dragOffset = CGSize(width: 0, height: -60)
-                                        }
+                        PieceView(
+                            piece: piece,
+                            cellSize: pieceCellSize
+                        )
+                        .opacity(draggedPiece == piece ? 0.1 : 1)
+                        .frame(
+                            width: CGFloat(piece.matrix[0].count) * pieceCellSize + 10,
+                            height: CGFloat(piece.matrix.count) * pieceCellSize + 10
+                        )
+                        .highPriorityGesture(
+                            DragGesture(minimumDistance: 0, coordinateSpace: .global)
+                                .onChanged { value in
+                                    if draggedPiece == nil {
+                                        HapticManager.shared.liftPiece()
+                                        draggedPiece = piece
+                                        dragOffset = CGSize(width: 0, height: -60)
+                                    }
 
-                                        dragLocation = value.location
-                                    }
-                                    .onEnded { _ in
-                                        draggedPiece = nil
-                                        dragOffset = .zero
-                                        dragLocation = .zero
-                                    }
-                            )
+                                    dragLocation = value.location
+                                }
+                                .onEnded { _ in
+                                    draggedPiece = nil
+                                    dragOffset = .zero
+                                    dragLocation = .zero
+                                }
+                        )
                     }
                 }
                 .padding()
@@ -53,8 +53,23 @@ struct TrayView: View {
                 self.trayFrame = newFrame
             }
         }
-        .frame(height: 110)
+        .frame(minHeight: 110, maxHeight: 130)
         .background(Color.themeTray)
         .cornerRadius(16)
     }
+}
+
+
+#Preview {
+    @Previewable @StateObject var navigationManager: NavigationManager = .shared
+    NavigationStack(path: $navigationManager.path) {
+        MainGameView()
+            .environmentObject(GameViewModel())
+            .environmentObject(AdsManager.shared)
+            .preferredColorScheme(.dark)
+            .navigationDestination(for: NavigationView<AnyView>.self) { destination in
+                destination
+            }
+    }
+    .environmentObject(navigationManager)
 }
