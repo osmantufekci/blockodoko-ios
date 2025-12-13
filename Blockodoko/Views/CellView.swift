@@ -3,42 +3,35 @@ import SwiftUI
 struct CellView: View {
     let cell: Cell
     let size: CGFloat
-    var isPreview: Bool = false
-    
+    let isPreview: Bool
+    let texture: Texture
+
     var body: some View {
         ZStack {
             RoundedRectangle(cornerRadius: 4)
-                .fill(fillColor)
+                .fill(Color.themeBoard)
                 .frame(width: size, height: size)
-            
-            if cell.isFilled, cell.isLocked {
-                DiagonalStripes()
-                    .stroke(Color.white.opacity(0.15), lineWidth: 2)
-                    .clipShape(Rectangle())
+
+            if cell.isFilled {
+                BlockUnitView(
+                    color: cell.color ?? "c-0",
+                    size: size,
+                    isGhost: false
+                )
+                .transition(.scale.combined(with: .opacity))
+
+            } else if isPreview {
+                BlockUnitView(
+                    color: "gray",
+                    size: size,
+                    isGhost: true
+                )
             }
-        }
-        .overlay(
-            RoundedRectangle(cornerRadius: 4)
-                .stroke(Color.white.opacity(0.1), lineWidth: 1)
-        )
-    }
-    
-    var fillColor: Color {
-        if isPreview {
-            return Color.white.opacity(0.3)
-        }
-        if cell.isFilled {
-            if let c = cell.color {
-                return Color.from(string: c)
-            }
-            return .gray
-        } else {
-            return Color(hex: "2a2a2a")
         }
     }
 }
 
 #Preview {
     var cell = Cell(x: 4, y: 8, isFilled: true, isLocked: true)
-    return CellView(cell: cell, size: .init(64))
+    CellView(cell: cell, size: 256, isPreview: false, texture: .radial)
 }

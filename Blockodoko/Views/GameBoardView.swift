@@ -22,7 +22,7 @@ struct GameBoardView: View {
                             ForEach(viewModel.board[y].indices, id: \.self) { x in
                                 let cell = viewModel.board[y][x]
                                 let isPreview = viewModel.previewCells.contains("\(x),\(y)")
-                                CellView(cell: cell, size: cellSize, isPreview: isPreview)
+                                CellView(cell: cell, size: cellSize, isPreview: isPreview, texture: .wood)
                             }
                         }
                     }
@@ -71,5 +71,8 @@ struct GameBoardView: View {
 }
 
 #Preview {
-    GameBoardView(viewModel: .init(), boardFrame: .constant(CGRect(x: 12, y: 21, width: 60, height: 50)))
+    GameBoardView(
+        viewModel: .init(),
+        boardFrame: .constant(CGRect(x: 12, y: 21, width: 60, height: 50))
+    )
 }
