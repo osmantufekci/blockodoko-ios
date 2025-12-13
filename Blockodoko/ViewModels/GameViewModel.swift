@@ -35,6 +35,8 @@ final class GameViewModel: ObservableObject, GameContext {
     @Published var previewCells: Set<String> = []
     @Published var showJokerModal = false
 
+    private var adsManager: AdsManager = .shared
+
     // Internal State
     private var rng: SeededRNG?
     var currentGridSize: Int = 8
@@ -155,6 +157,12 @@ final class GameViewModel: ObservableObject, GameContext {
         withAnimation(Animation.easeIn.delay(0.25)) {
             showGameOverModal = true
             HapticManager.shared.gameOver()
+        }
+
+        if currentLevel % ([3,4].randomElement() ?? 4) == 0 {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                AdsManager.shared.showInterstitialAd()
+            }
         }
     }
 
