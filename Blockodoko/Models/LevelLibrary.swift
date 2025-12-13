@@ -19,7 +19,7 @@ struct LevelLibrary {
 
         // --- SECTION 2: GETTING SERIOUS (MEDIUM) ---
         LevelData(id: 5, difficulty: .medium, seed: "LEVEL_05_STEP", targetPieces: 18),
-        LevelData(id: 6, difficulty: .medium, seed: "LEVEL_06_PATH", targetPieces: 20),
+        LevelData(id: 6, difficulty: .medium, seed: "LEVEL_06", targetPieces: 20),
         LevelData(id: 7, difficulty: .medium, seed: "LEVEL_07_CLIMB", targetPieces: 20),
         LevelData(id: 8, difficulty: .medium, seed: "LEVEL_08_PEAK", targetPieces: 22),
 
