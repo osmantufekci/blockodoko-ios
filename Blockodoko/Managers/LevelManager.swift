@@ -66,4 +66,8 @@ final class LevelManager: ObservableObject {
     func getLevel(number: Int) -> LevelData? {
         return levels.first { $0.id == number }
     }
+
+    func getRewardData(number: Int) -> Int? {
+        return levels.first { $0.id == number }?.difficulty.levelClearReward
+    }
 }
